@@ -1,0 +1,11 @@
+3
+21 19 3 10001 8962873 2.011
+23 19 3 10001 457020649 2.059
+22 13 3 10001 7937809 2.069
+
+First line: # of flows
+src0 dst0 3 dst_port0 size0 start_time0
+src1 dst1 3 dst_port1 size1 start_time1
+...
+
+Please order the flows in ascending start_time!
