@@ -164,11 +164,10 @@ def parse_telemetry(switch_dict, switch_list):
 def ip_to_node_id(ip: str) -> int:
     return int(ip[2:6], 16)
 
-import demo_telemetry
 import networkx as nx
 
 def rating():
-    
+    import demo_telemetry
     graphs = demo_telemetry.window_graphs
 
     def parse_network_graph(graph):

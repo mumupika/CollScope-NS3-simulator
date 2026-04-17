@@ -33,3 +33,4 @@ analysis/trace_reader
 backup/
 *copy
 
+*.cache

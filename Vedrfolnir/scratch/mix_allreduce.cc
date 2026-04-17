@@ -1094,15 +1094,15 @@ int main(int argc, char *argv[])
 			sw->m_mmu->node_id = sw->GetId();
 
 			// RDMA NPA detect
-			std::string telemetry_path = "/telemetry_" + std::to_string(i) + ".txt";
-			telemetry_path = dir + telemetry_path;
-			sw->fp_telemetry = fopen(telemetry_path.c_str(), "w");
+			// std::string telemetry_path = "/telemetry_" + std::to_string(i) + ".txt";
+			// telemetry_path = dir + telemetry_path;
+			// sw->fp_telemetry = fopen(telemetry_path.c_str(), "w");
 			if (ack_high_prio)									  
 				sw->SetAttribute("AckHighPrio", UintegerValue(1));
 			else
 				sw->SetAttribute("AckHighPrio", UintegerValue(0));
-			if (epoch_time > 0)
-				sw->epochTime = epoch_time;
+			// if (epoch_time > 0)
+			// 	sw->epochTime = epoch_time;
 		}
 	}
 
@@ -1147,7 +1147,7 @@ int main(int argc, char *argv[])
 			rdmaHw->m_step_fct = agent_step_fct;
 			rdmaHw->m_mon_sport = 10000;
 			if (agent_nodes.find(i) != agent_nodes.end())
-				rdmaHw->m_agent_flag = true;
+				rdmaHw->m_agent_flag = false;
 			else
 				rdmaHw->m_agent_flag = false;
 			if (no_cc_nodes.find(i) != no_cc_nodes.end())

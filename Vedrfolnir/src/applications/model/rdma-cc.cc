@@ -242,8 +242,6 @@ void RdmaCC::SendStep(){
         m_sendStep++;
     }
 
-    SendNotification(); // CC NPA
-
     if(m_stepStu == 1 && m_recvStep > m_sendStep){
         m_stepStu = 0;
         m_sendStep++; 
@@ -253,7 +251,6 @@ void RdmaCC::SendStep(){
             return;
         }
 
-        SetAgent(); // CC NPA
         Send(m_nextRank[m_sendStep - 1]);
     }
 }
@@ -437,8 +434,6 @@ void RdmaCC::StartApplication (void)
     }
 
     NS_ASSERT_MSG(m_op > 3 && m_alg != 0, "Start cllocative communication");
-
-    InitAgent();
 
     m_recvStep = 1;
     m_sendStep = 0;
