@@ -1,0 +1,31 @@
+# fu**ing vscode doesn't like glibc < 2.27, appease them.
+FROM ubuntu:20.04
+ARG DEBIAN_FRONTEND=noninteractive
+
+# fu**ing great fire wall block the network, appease them.
+RUN sed -i 's/archive.ubuntu.com/mirrors.aliyun.com/g' /etc/apt/sources.list && \
+    sed -i 's/security.ubuntu.com/mirrors.aliyun.com/g' /etc/apt/sources.list
+
+# fu**ing project need the GCC-5 or they will throw numerous errors when compiling. Appease them.
+RUN echo "deb http://mirrors.aliyun.com/ubuntu/ bionic main universe" >> /etc/apt/sources.list && \
+    echo "deb http://mirrors.aliyun.com/ubuntu/ bionic-updates main universe" >> /etc/apt/sources.list
+
+# update.
+RUN apt update
+
+# First: adapt these.
+RUN apt install gdb gcc-5 g++-5 -y --fix-missing 
+
+# Then the python item.
+RUN apt install -y gnuplot python python3 python3-pip libgtk-3-0 bzip2 wget git bear --fix-missing 
+
+# raise the priority so I will be comfort.
+RUN update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-5 100 && \
+    update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-5 100
+
+# kick the LSP in.
+RUN apt update && apt install clangd-18 -y
+RUN ln -s /usr/bin/clangd-18 /usr/bin/clangd
+
+# working here.
+WORKDIR /home/ubuntu/gs/Vedrfolnir
