@@ -34,3 +34,4 @@ backup/
 *copy
 
 *.cache
+hook_output/**
