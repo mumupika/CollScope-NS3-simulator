@@ -65,3 +65,14 @@ AGENT_THRESHOLD 30 {for Vedrfolnir, rtt threshold}
 AUTO_AGENT_THRESHOLD 200 {for Vedrfolnir, automatically set RTT thresholds, 200：2 * RTT}
 EPOCH_TIME 1000000 {for Vedrfolnir, telemetry statistics cycle duration}
 STEP_DETECT_TIMES 3 {for Vedrfolnir, max number of anomaly detections per step}
+
+DP_GROUP_SIZE 4             {The dp group size for the hybrid_dppp test.}
+NUM_PP_STAGES 4             {The pp group size for the hybrid_dppp test.}
+NUM_CHUNKS 6                {The forward message chunks.}
+TRAIN_MODE 1                {1: Use train mode(include backward). 0: Use test mode(without backward)}
+SCHEDULE_MODE 0             {1: Allow user to schedule the pipeline alone. 0: Use traditional PipeDream.}
+MAX_INFLIGHT 100            {Allow the forward/backward inflight chunk in stage 1 pipeline.}
+COMPUTE_TIME_FWD 50         {Set the forward Calculating time. Unit: ms}
+COMPUTE_TIME_BWD 50         {Set the backward Calculating time. Unit: ms}
+CHUNK_SIZE_FWD 8000000      {The forward Activation Size. Unit: B}
+CHUNK_SIZE_BWD 8000000      {The backward gradient Size. Unit: B}

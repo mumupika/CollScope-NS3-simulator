@@ -151,6 +151,20 @@ void RdmaCC::SetIP2APPCb(Callback<Ptr<RdmaCC>, Ipv4Address> cb) {
     m_ip2app = cb;
 }
 
+void RdmaCC::SetCompletionCallback(Callback<void> cb) {
+    m_completionCb = cb;
+}
+
+void RdmaCC::Reset() {
+    m_recvStep = 0;
+    m_sendStep = 0;
+    m_stepStu = 1;
+    m_prevRank.clear();
+    m_nextRank.clear();
+    m_packetSize.clear();
+    m_op = 0;
+}
+
 void RdmaCC::SetPairRTT(std::map<uint32_t, std::map<uint32_t, uint64_t>> pairRtt_) {
     pairRtt = pairRtt_;
 }
@@ -239,7 +253,10 @@ void RdmaCC::SendStep() {
         m_sendStep++;
 
         if (m_sendStep > m_nextRank.size()) {
-            // TODO  application finished
+            // Application finished - trigger completion callback
+            if (!m_completionCb.IsNull()) {
+                m_completionCb();
+            }
             return;
         }
 

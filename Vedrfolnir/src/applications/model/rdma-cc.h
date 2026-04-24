@@ -46,6 +46,8 @@ public:
     void SetChunk(uint64_t size, uint16_t num);
     void SetControl(uint32_t win, uint64_t baseRtt, uint16_t pg);
     void SetIP2APPCb(Callback<Ptr<RdmaCC>, Ipv4Address> cb);
+    void SetCompletionCallback(Callback<void> cb);
+    void Reset();
 
     void Send(uint16_t distRank);
     // void Recv(uint16_t srcRank);
@@ -61,17 +63,18 @@ public:
     void Allgather();
     void ReduceScatter();
 
-protected:
+    // Called by HybridCC to start/restart the ring communication
+    virtual void StartApplication(void);
+    virtual void StopApplication(void);
     virtual void DoDispose(void);
 
 private:
-    virtual void StartApplication(void);
-    virtual void StopApplication(void);
 
     void SendChunkFinish();
     void SendStep();
 
     Callback<Ptr<RdmaCC>, Ipv4Address> m_ip2app;
+    Callback<void> m_completionCb;
     std::map<uint32_t, std::map<uint32_t, uint64_t>> pairRtt;
     uint32_t autoRTTFactor = 0;
 
