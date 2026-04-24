@@ -22,170 +22,162 @@
 
 namespace ns3 {
 
-NS_LOG_COMPONENT_DEFINE ("RdmaCC");
-NS_OBJECT_ENSURE_REGISTERED (RdmaCC);
+NS_LOG_COMPONENT_DEFINE("RdmaCC");
+NS_OBJECT_ENSURE_REGISTERED(RdmaCC);
 
 TypeId
-RdmaCC::GetTypeId (void)
-{
-  static TypeId tid = TypeId ("ns3::RdmaCC")
-    .SetParent<Application> ()
-    .AddConstructor<RdmaCC> ()
-    .AddAttribute ("CommOP",
-                    "Operation of collective communication",
-                    UintegerValue (0),
-                    MakeUintegerAccessor (&RdmaCC::m_op),
-                    MakeUintegerChecker<uint8_t> ())
-    .AddAttribute ("RankID",
-                   "Rank ID",
-                   UintegerValue (0),
-                   MakeUintegerAccessor (&RdmaCC::m_rank),
-                   MakeUintegerChecker<uint16_t> ())
-    .AddAttribute ("Algorithm",
-                    "algorithm",
-                    UintegerValue (0),
-                    MakeUintegerAccessor (&RdmaCC::m_alg),
-                    MakeUintegerChecker<uint8_t> ())
-    .AddAttribute ("StepStu",
-                    "status of current step",
-                    UintegerValue (1),
-                    MakeUintegerAccessor (&RdmaCC::m_stepStu),
-                    MakeUintegerChecker<uint8_t> ())
-    .AddAttribute ("IP",
-                   "Source IP",
-                   Ipv4AddressValue ("0.0.0.0"),
-                   MakeIpv4AddressAccessor (&RdmaCC::m_ip),
-                   MakeIpv4AddressChecker ())
-    .AddAttribute ("Port",
-                   "Source Port",
-                   UintegerValue (0),
-                   MakeUintegerAccessor (&RdmaCC::m_port),
-                   MakeUintegerChecker<uint16_t> ())
-    .AddAttribute ("ChunkSize",
-                    "The size of each chunk",
-                    UintegerValue (0),
-                    MakeUintegerAccessor (&RdmaCC::m_chunkSize),
-                    MakeUintegerChecker<uint64_t> ()) 
-    .AddAttribute ("ChunkNum",
-                    "The number of chunks to send",
-                    UintegerValue (1),
-                    MakeUintegerAccessor (&RdmaCC::m_chunkNum),
-                    MakeUintegerChecker<uint16_t> ())               
-	.AddAttribute ("PriorityGroup", 
-                   "The priority group of this flow",
-				    UintegerValue (0),
-				    MakeUintegerAccessor (&RdmaCC::m_pg),
-				    MakeUintegerChecker<uint16_t> ())
-    .AddAttribute ("Window",
-                   "Bound of on-the-fly packets",
-                   UintegerValue (0),
-                   MakeUintegerAccessor (&RdmaCC::m_win),
-                   MakeUintegerChecker<uint32_t> ())
-    .AddAttribute ("BaseRtt",
-                   "Base Rtt",
-                   UintegerValue (0),
-                   MakeUintegerAccessor (&RdmaCC::m_baseRtt),
-                   MakeUintegerChecker<uint64_t> ())
-  ;
-  return tid;
+RdmaCC::GetTypeId(void) {
+    static TypeId tid = TypeId("ns3::RdmaCC")
+                            .SetParent<Application>()
+                            .AddConstructor<RdmaCC>()
+                            .AddAttribute("CommOP",
+                                          "Operation of collective communication",
+                                          UintegerValue(0),
+                                          MakeUintegerAccessor(&RdmaCC::m_op),
+                                          MakeUintegerChecker<uint8_t>())
+                            .AddAttribute("RankID",
+                                          "Rank ID",
+                                          UintegerValue(0),
+                                          MakeUintegerAccessor(&RdmaCC::m_rank),
+                                          MakeUintegerChecker<uint16_t>())
+                            .AddAttribute("Algorithm",
+                                          "algorithm",
+                                          UintegerValue(0),
+                                          MakeUintegerAccessor(&RdmaCC::m_alg),
+                                          MakeUintegerChecker<uint8_t>())
+                            .AddAttribute("StepStu",
+                                          "status of current step",
+                                          UintegerValue(1),
+                                          MakeUintegerAccessor(&RdmaCC::m_stepStu),
+                                          MakeUintegerChecker<uint8_t>())
+                            .AddAttribute("IP",
+                                          "Source IP",
+                                          Ipv4AddressValue("0.0.0.0"),
+                                          MakeIpv4AddressAccessor(&RdmaCC::m_ip),
+                                          MakeIpv4AddressChecker())
+                            .AddAttribute("Port",
+                                          "Source Port",
+                                          UintegerValue(0),
+                                          MakeUintegerAccessor(&RdmaCC::m_port),
+                                          MakeUintegerChecker<uint16_t>())
+                            .AddAttribute("ChunkSize",
+                                          "The size of each chunk",
+                                          UintegerValue(0),
+                                          MakeUintegerAccessor(&RdmaCC::m_chunkSize),
+                                          MakeUintegerChecker<uint64_t>())
+                            .AddAttribute("ChunkNum",
+                                          "The number of chunks to send",
+                                          UintegerValue(1),
+                                          MakeUintegerAccessor(&RdmaCC::m_chunkNum),
+                                          MakeUintegerChecker<uint16_t>())
+                            .AddAttribute("PriorityGroup",
+                                          "The priority group of this flow",
+                                          UintegerValue(0),
+                                          MakeUintegerAccessor(&RdmaCC::m_pg),
+                                          MakeUintegerChecker<uint16_t>())
+                            .AddAttribute("Window",
+                                          "Bound of on-the-fly packets",
+                                          UintegerValue(0),
+                                          MakeUintegerAccessor(&RdmaCC::m_win),
+                                          MakeUintegerChecker<uint32_t>())
+                            .AddAttribute("BaseRtt",
+                                          "Base Rtt",
+                                          UintegerValue(0),
+                                          MakeUintegerAccessor(&RdmaCC::m_baseRtt),
+                                          MakeUintegerChecker<uint64_t>());
+    return tid;
 }
 
-RdmaCC::RdmaCC ()
-{
-//   NS_LOG_FUNCTION_NOARGS ();
+RdmaCC::RdmaCC() {
+    //   NS_LOG_FUNCTION_NOARGS ();
 }
 
-RdmaCC::~RdmaCC ()
-{
-  NS_LOG_FUNCTION_NOARGS ();
+RdmaCC::~RdmaCC() {
+    NS_LOG_FUNCTION_NOARGS();
 }
 
-void RdmaCC::SetRank(uint16_t rank)
-{
+void RdmaCC::SetRank(uint16_t rank) {
     m_rank = rank;
 }
 
-void RdmaCC::SetLocal (Ipv4Address ip, uint16_t port)
-{
-  m_ip = ip;
-  m_port = port;
+void RdmaCC::SetLocal(Ipv4Address ip, uint16_t port) {
+    m_ip = ip;
+    m_port = port;
 }
 
-void RdmaCC::AddCommGroup (Ipv4Address ip, uint16_t port)
-{
-  Comm comm;
-  comm.ip = ip;
-  comm.port = port;
-  m_comm.push_back(comm);
+void RdmaCC::AddCommGroup(Ipv4Address ip, uint16_t port) {
+    Comm comm;
+    comm.ip = ip;
+    comm.port = port;
+    m_comm.push_back(comm);
 }
 
-void RdmaCC::SetChunk(uint64_t size, uint16_t num){
+void RdmaCC::SetChunk(uint64_t size, uint16_t num) {
     m_chunkSize = size;
     m_chunkNum = num;
 }
 
-void RdmaCC::SetAlg(uint8_t alg){
+void RdmaCC::SetAlg(uint8_t alg) {
     m_alg = alg;
 }
 
-void RdmaCC::SetControl(uint32_t win, uint64_t baseRtt, uint16_t pg){
+void RdmaCC::SetControl(uint32_t win, uint64_t baseRtt, uint16_t pg) {
     m_win = win;
     m_baseRtt = baseRtt;
     m_pg = pg;
 }
 
-Ipv4Address RdmaCC::GetIP(){
+Ipv4Address RdmaCC::GetIP() {
     return m_ip;
 }
 
-uint16_t RdmaCC::GetPort(){
+uint16_t RdmaCC::GetPort() {
     return m_port;
 }
 
-uint32_t RdmaCC::GetSendStep(){
+uint32_t RdmaCC::GetSendStep() {
     return m_sendStep;
 }
 
-uint32_t RdmaCC::GetRecvStep(){
+uint32_t RdmaCC::GetRecvStep() {
     return m_recvStep;
 }
 
-int RdmaCC::GetPrevRank(){
+int RdmaCC::GetPrevRank() {
     return m_prevRank[m_recvStep - 1];
 }
 
-void RdmaCC::SetIP2APPCb(Callback<Ptr<RdmaCC>, Ipv4Address> cb){
+void RdmaCC::SetIP2APPCb(Callback<Ptr<RdmaCC>, Ipv4Address> cb) {
     m_ip2app = cb;
 }
 
-void RdmaCC::SetPairRTT(std::map<uint32_t, std::map<uint32_t, uint64_t>> pairRtt_){
+void RdmaCC::SetPairRTT(std::map<uint32_t, std::map<uint32_t, uint64_t>> pairRtt_) {
     pairRtt = pairRtt_;
 }
-void RdmaCC::SetAutoRTT(uint32_t factor){
+void RdmaCC::SetAutoRTT(uint32_t factor) {
     autoRTTFactor = factor;
 }
 
-void RdmaCC::Send(uint16_t distRank){
-    
+void RdmaCC::Send(uint16_t distRank) {
     // NS_LOG_FUNCTION("Rank: " << m_rank << "  SendStep: m_sendStep = " << m_sendStep << ", m_recvStep = " << m_recvStep);
     // get RDMA drive
     Ptr<RdmaDriver> rdma = GetNode()->GetObject<RdmaDriver>();
-    if(m_alg == 2)
+    if (m_alg == 2)
         rdma->AddQueuePair(m_packetSize[m_sendStep - 1], m_pg, m_ip, m_comm[distRank].ip, m_port, m_comm[distRank].port, m_win, m_baseRtt, MakeCallback(&RdmaCC::SendChunkFinish, this));
     else
         rdma->AddQueuePair(m_chunkSize, m_pg, m_ip, m_comm[distRank].ip, m_port, m_comm[distRank].port, m_win, m_baseRtt, MakeCallback(&RdmaCC::SendChunkFinish, this));
 }
 
-void RdmaCC::FinishRecvStep(){
-    NS_LOG_FUNCTION_NOARGS ();
+void RdmaCC::FinishRecvStep() {
+    NS_LOG_FUNCTION_NOARGS();
     m_recvStep++;
     SendStep();
 }
 
-void RdmaCC::SendChunkFinish(){
-    NS_LOG_FUNCTION_NOARGS ();
+void RdmaCC::SendChunkFinish() {
+    NS_LOG_FUNCTION_NOARGS();
 
-    if(m_alg == 0){
+    if (m_alg == 0) {
         // do nothing
         return;
     }
@@ -197,57 +189,57 @@ void RdmaCC::SendChunkFinish(){
     SendStep();
 }
 
-void RdmaCC::Scatter(uint16_t rootRank){
-    NS_LOG_FUNCTION_NOARGS ();
+void RdmaCC::Scatter(uint16_t rootRank) {
+    NS_LOG_FUNCTION_NOARGS();
 
     m_op = 1;
 
-    if(m_rank == rootRank){
-        for(uint16_t i = 0; i < m_comm.size(); i++){
-            if(i != rootRank){
+    if (m_rank == rootRank) {
+        for (uint16_t i = 0; i < m_comm.size(); i++) {
+            if (i != rootRank) {
                 Send(i);
             }
         }
     }
 }
 
-void RdmaCC::Gather(uint16_t rootRank){
-    NS_LOG_FUNCTION_NOARGS ();
+void RdmaCC::Gather(uint16_t rootRank) {
+    NS_LOG_FUNCTION_NOARGS();
     m_op = 2;
-    if(m_rank != rootRank){
-        for(uint32_t i = 0; i < m_comm.size(); i++){
+    if (m_rank != rootRank) {
+        for (uint32_t i = 0; i < m_comm.size(); i++) {
             Send(rootRank);
         }
     }
 }
 
-void RdmaCC::AlltoAll(){
-    NS_LOG_FUNCTION_NOARGS ();
+void RdmaCC::AlltoAll() {
+    NS_LOG_FUNCTION_NOARGS();
     m_op = 3;
-    for(uint32_t i = 0; i < m_comm.size(); i++){
-        if(i != m_rank){
+    for (uint32_t i = 0; i < m_comm.size(); i++) {
+        if (i != m_rank) {
             Send(i);
         }
     }
 }
 
-void RdmaCC::SendStep(){
+void RdmaCC::SendStep() {
     // NS_LOG_FUNCTION_NOARGS ();
 
-    while(m_recvStep <= m_nextRank.size() && m_prevRank[m_recvStep - 1] == -1){
+    while (m_recvStep <= m_nextRank.size() && m_prevRank[m_recvStep - 1] == -1) {
         m_recvStep++;
     }
 
-    while(m_sendStep < m_recvStep && m_nextRank[m_sendStep] == -1){
+    while (m_sendStep < m_recvStep && m_nextRank[m_sendStep] == -1) {
         m_sendStep++;
     }
 
-    if(m_stepStu == 1 && m_recvStep > m_sendStep){
+    if (m_stepStu == 1 && m_recvStep > m_sendStep) {
         m_stepStu = 0;
-        m_sendStep++; 
+        m_sendStep++;
 
-        if(m_sendStep > m_nextRank.size()){
-            //TODO  application finished
+        if (m_sendStep > m_nextRank.size()) {
+            // TODO  application finished
             return;
         }
 
@@ -255,15 +247,15 @@ void RdmaCC::SendStep(){
     }
 }
 
-void RdmaCC::Allgather(){
+void RdmaCC::Allgather() {
     // NS_LOG_FUNCTION_NOARGS ();
 
     m_op = 7;
 
-    if(m_alg == 1){
+    if (m_alg == 1) {
         // ring
         uint32_t commLen = m_comm.size();
-        for(uint32_t i = 0; i < (commLen - 1); i++){
+        for (uint32_t i = 0; i < (commLen - 1); i++) {
             m_prevRank.push_back((m_rank - 1 + commLen) % commLen);
             m_nextRank.push_back((m_rank + 1) % commLen);
         }
@@ -273,18 +265,18 @@ void RdmaCC::Allgather(){
 
     NS_ASSERT_MSG(0, "The algorithm is not supported");
 
-    //TODO
+    // TODO
 }
 
-void RdmaCC::Allreduce(){
+void RdmaCC::Allreduce() {
     // NS_LOG_FUNCTION_NOARGS ();
 
     m_op = 4;
 
-    if(m_alg == 1){
+    if (m_alg == 1) {
         // ring
         uint32_t commLen = m_comm.size();
-        for(uint32_t i = 0; i < 2 * (commLen - 1); i++){
+        for (uint32_t i = 0; i < 2 * (commLen - 1); i++) {
             m_prevRank.push_back((m_rank - 1 + commLen) % commLen);
             m_nextRank.push_back((m_rank + 1) % commLen);
         }
@@ -292,89 +284,89 @@ void RdmaCC::Allreduce(){
         return;
     }
 
-    if(m_alg == 2){
+    if (m_alg == 2) {
         // halving and doubling
 
         // align
         uint32_t p = m_comm.size();
         uint32_t pow = 1;
-        for(uint32_t i = p >> 1; i; i >>= 1){
+        for (uint32_t i = p >> 1; i; i >>= 1) {
             pow <<= 1;
         }
         uint32_t r = p - pow;
-        if(r != 0 && m_rank < 2*r){
+        if (r != 0 && m_rank < 2 * r) {
             m_prevRank.push_back(m_rank ^ 1);
             m_nextRank.push_back(m_rank ^ 1);
             m_packetSize.push_back(m_chunkSize * p / 2);
 
-            if(m_rank & 1){
+            if (m_rank & 1) {
                 m_prevRank.push_back(-1);
                 m_nextRank.push_back(m_rank ^ 1);
-                m_packetSize.push_back(m_chunkSize * p / 2); 
-            }
-            else{
+                m_packetSize.push_back(m_chunkSize * p / 2);
+            } else {
                 m_prevRank.push_back(m_rank ^ 1);
                 m_nextRank.push_back(-1);
                 m_packetSize.push_back(0);
             }
         }
 
-        if(r != 0 && m_rank >= 2*r){
-            m_prevRank.push_back(-1); m_prevRank.push_back(-1);
-            m_nextRank.push_back(-1); m_nextRank.push_back(-1);
-            m_packetSize.push_back(0); m_packetSize.push_back(0);
+        if (r != 0 && m_rank >= 2 * r) {
+            m_prevRank.push_back(-1);
+            m_prevRank.push_back(-1);
+            m_nextRank.push_back(-1);
+            m_nextRank.push_back(-1);
+            m_packetSize.push_back(0);
+            m_packetSize.push_back(0);
         }
 
-        std::vector<uint32_t> mapRank(p);  // index rank; value newRank
-        for(uint32_t i = 0; i < p; i++){
+        std::vector<uint32_t> mapRank(p); // index rank; value newRank
+        for (uint32_t i = 0; i < p; i++) {
             mapRank[i] = i;
         }
 
-        if(r != 0){
-            for(uint32_t i = 0; i < 2*r; i++){
-                if(i % 2 ==0) mapRank[i] = i / 2;
-                else mapRank[i] = i / 2 + pow;
+        if (r != 0) {
+            for (uint32_t i = 0; i < 2 * r; i++) {
+                if (i % 2 == 0)
+                    mapRank[i] = i / 2;
+                else
+                    mapRank[i] = i / 2 + pow;
             }
         }
 
-        std::vector<uint32_t> rmapRank(p);  // index newRank; value rank
-        for(uint32_t i = 0; i < p; i++){
+        std::vector<uint32_t> rmapRank(p); // index newRank; value rank
+        for (uint32_t i = 0; i < p; i++) {
             rmapRank[mapRank[i]] = i;
         }
 
         // halving and doubling
-        for(uint32_t i = 1; i < pow; i <<= 1){
-            if(mapRank[m_rank] < pow){
-                if((mapRank[m_rank] & i) == 0){
+        for (uint32_t i = 1; i < pow; i <<= 1) {
+            if (mapRank[m_rank] < pow) {
+                if ((mapRank[m_rank] & i) == 0) {
                     m_prevRank.push_back(rmapRank[mapRank[m_rank] + i]);
                     m_nextRank.push_back(rmapRank[mapRank[m_rank] + i]);
-                }
-                else{
+                } else {
                     m_prevRank.push_back(rmapRank[mapRank[m_rank] - i]);
                     m_nextRank.push_back(rmapRank[mapRank[m_rank] - i]);
                 }
                 m_packetSize.push_back(m_chunkSize * p / 2 / i);
-            }
-            else{
+            } else {
                 m_prevRank.push_back(-1);
                 m_nextRank.push_back(-1);
                 m_packetSize.push_back(0);
             }
         }
 
-        for(uint32_t i = pow / 2; i >= 1; i >>= 1){
-            if(mapRank[m_rank] < pow){
-                if((mapRank[m_rank] & i) == 0){
+        for (uint32_t i = pow / 2; i >= 1; i >>= 1) {
+            if (mapRank[m_rank] < pow) {
+                if ((mapRank[m_rank] & i) == 0) {
                     m_prevRank.push_back(rmapRank[mapRank[m_rank] + i]);
                     m_nextRank.push_back(rmapRank[mapRank[m_rank] + i]);
-                }
-                else{
+                } else {
                     m_prevRank.push_back(rmapRank[mapRank[m_rank] - i]);
                     m_nextRank.push_back(rmapRank[mapRank[m_rank] - i]);
                 }
                 m_packetSize.push_back(m_chunkSize * p / 2 / i);
-            }
-            else{
+            } else {
                 m_prevRank.push_back(-1);
                 m_nextRank.push_back(-1);
                 m_packetSize.push_back(0);
@@ -382,20 +374,19 @@ void RdmaCC::Allreduce(){
         }
 
         // align
-        if(r != 0 && m_rank < 2*r){
-            if(m_rank & 1){
+        if (r != 0 && m_rank < 2 * r) {
+            if (m_rank & 1) {
                 m_prevRank.push_back(m_rank ^ 1);
                 m_nextRank.push_back(-1);
-                m_packetSize.push_back(0); 
-            }
-            else{
+                m_packetSize.push_back(0);
+            } else {
                 m_prevRank.push_back(-1);
                 m_nextRank.push_back(m_rank ^ 1);
                 m_packetSize.push_back(m_chunkSize * p);
             }
         }
 
-        if(r != 0 && m_rank >= 2*r){
+        if (r != 0 && m_rank >= 2 * r) {
             m_prevRank.push_back(-1);
             m_nextRank.push_back(-1);
             m_packetSize.push_back(0);
@@ -406,22 +397,21 @@ void RdmaCC::Allreduce(){
 
     NS_ASSERT_MSG(0, "The algorithm is not supported");
 
-    //TODO
+    // TODO
 }
 
-void RdmaCC::InitAgent(){
-    NS_LOG_FUNCTION_NOARGS ();
+void RdmaCC::InitAgent() {
+    NS_LOG_FUNCTION_NOARGS();
 
     Ptr<RdmaHw> rdmaHw = GetNode()->GetObject<RdmaDriver>()->m_rdma;
     rdmaHw->m_agent_step.push_back(0);
-    for(uint32_t i = 0; i < m_nextRank.size(); i++){
+    for (uint32_t i = 0; i < m_nextRank.size(); i++) {
         rdmaHw->m_agent_step.push_back(rdmaHw->m_detect_times);
     }
     rdmaHw->m_last_detect_time = 0;
 }
 
-void RdmaCC::StartApplication (void)
-{
+void RdmaCC::StartApplication(void) {
     NS_ASSERT_MSG(m_comm.size() > 1, "The number of ranks should be greater than 1");
     NS_ASSERT(m_comm.size() <= 30000);
 
@@ -429,7 +419,7 @@ void RdmaCC::StartApplication (void)
 
     // NS_LOG_FUNCTION_NOARGS();
 
-    if (m_alg != 3){
+    if (m_alg != 3) {
         NS_ASSERT_MSG(m_chunkNum == 1, "The chunk number should be 1");
     }
 
@@ -441,27 +431,24 @@ void RdmaCC::StartApplication (void)
     SendStep();
 }
 
-void RdmaCC::DoDispose (void)
-{
-  NS_LOG_FUNCTION_NOARGS ();
-//   m_node->DeleteApplication(this);
-  Application::DoDispose ();
+void RdmaCC::DoDispose(void) {
+    NS_LOG_FUNCTION_NOARGS();
+    //   m_node->DeleteApplication(this);
+    Application::DoDispose();
 }
 
-void RdmaCC::StopApplication ()
-{
-  NS_LOG_FUNCTION_NOARGS ();
-  //TODO: reset the application
-  
+void RdmaCC::StopApplication() {
+    NS_LOG_FUNCTION_NOARGS();
+    // TODO: reset the application
 }
 
 // CC NPA
-void RdmaCC::SendNotification(){
-    NS_LOG_FUNCTION_NOARGS ();
-    
+void RdmaCC::SendNotification() {
+    NS_LOG_FUNCTION_NOARGS();
+
     NS_ASSERT(m_sendStep <= m_recvStep);
 
-    if(m_sendStep < m_recvStep){ // not waiting
+    if (m_sendStep < m_recvStep) { // not waiting
         return;
     }
 
@@ -472,7 +459,7 @@ void RdmaCC::SendNotification(){
     Ptr<RdmaHw> rdmaHw = GetNode()->GetObject<RdmaDriver>()->m_rdma;
 
     Ptr<Packet> p = Create<Packet>(0);
-    
+
     CustomHeader notifHdr(CustomHeader::L4_Header);
     notifHdr.l3Prot = 0xF9;
     notifHdr.notif.sport = m_port;
@@ -480,7 +467,7 @@ void RdmaCC::SendNotification(){
     notifHdr.notif.step = m_sendStep;
     notifHdr.notif.times = rdmaHw->m_agent_step[m_sendStep];
     p->AddHeader(notifHdr);
-    
+
     Ipv4Header head;
     head.SetSource(m_ip);
     head.SetDestination(m_comm[m_prevRank[m_sendStep - 1]].ip);
@@ -493,13 +480,13 @@ void RdmaCC::SendNotification(){
     ppp.SetProtocol(0x0021);
     p->AddHeader(ppp);
 
-    auto &v = rdmaHw->m_rtTable[m_comm[m_prevRank[m_sendStep - 1]].ip.Get()];  ////
-    union{
+    auto &v = rdmaHw->m_rtTable[m_comm[m_prevRank[m_sendStep - 1]].ip.Get()]; ////
+    union {
         struct {
-                uint32_t sip, dip;
-                uint16_t sport, dport;
-            };
-            char c[12];
+            uint32_t sip, dip;
+            uint16_t sport, dport;
+        };
+        char c[12];
     } buf;
     buf.sip = m_ip.Get();
     buf.dip = m_comm[m_prevRank[m_sendStep - 1]].ip.Get();
@@ -514,16 +501,16 @@ void RdmaCC::SendNotification(){
 }
 
 // CC NPA
-void RdmaCC::SetAgent(){
-    NS_LOG_FUNCTION_NOARGS ();
+void RdmaCC::SetAgent() {
+    NS_LOG_FUNCTION_NOARGS();
 
     Ptr<RdmaHw> rdmaHw = GetNode()->GetObject<RdmaDriver>()->m_rdma;
     rdmaHw->m_detect_interval = rdmaHw->m_step_fct * 1000 / rdmaHw->m_detect_times;
     rdmaHw->m_last_detect_time = 0;
 
     // mRank -> mSendStep
-    if(autoRTTFactor > 0){
-        //hard
+    if (autoRTTFactor > 0) {
+        // hard
         uint32_t m_id = (m_ip.Get() >> 8) & 0xffff;
         uint32_t dist_id = (m_comm[m_nextRank[m_sendStep - 1]].ip.Get() >> 8) & 0xffff;
         uint64_t rtt = pairRtt[m_id][dist_id];
