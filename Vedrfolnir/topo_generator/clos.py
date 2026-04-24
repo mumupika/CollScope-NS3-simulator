@@ -12,6 +12,8 @@ if __name__ == '__main__':
     ctsw = rtsw
     atsw = ctsw // 2
     
+    print(f"total_host: {total_host}; host: {host}; rtsw: {rtsw}, ctsw: {ctsw}, atsw: {atsw}")
+    
     with open(f'./clos-{atsw}-{ctsw}-{rtsw}-{host}.txt', 'w') as f:
         total_node = total_host + rtsw + ctsw + atsw
         total_switch = total_node - total_host
@@ -40,7 +42,7 @@ if __name__ == '__main__':
         
         # connect rstw to ctsw.
         for i in range(total_host, total_host + rtsw):
-            for j in range(total_host + rtsw, total_host + ctsw):
+            for j in range(total_host + rtsw, total_host + rtsw + ctsw):
                 print(f"{i} {j} {link_bw}Gbps {link_delay}ms 0", file = f)
                 print(f"{i} {j} {link_bw}Gbps {link_delay}ms 0")
         
