@@ -184,6 +184,7 @@ void RdmaCC::Send(uint16_t distRank) {
 
 void RdmaCC::FinishRecvStep() {
     NS_LOG_FUNCTION_NOARGS();
+    if (m_nextRank.empty()) return;
     m_recvStep++;
     SendStep();
 }
@@ -191,8 +192,8 @@ void RdmaCC::FinishRecvStep() {
 void RdmaCC::SendChunkFinish() {
     NS_LOG_FUNCTION_NOARGS();
 
-    if (m_alg == 0) {
-        // do nothing
+    if (m_alg == 0 || m_sendStep == 0) {
+        // do nothing: no send steps completed yet
         return;
     }
 
@@ -244,8 +245,15 @@ void RdmaCC::SendStep() {
         m_recvStep++;
     }
 
-    while (m_sendStep < m_recvStep && m_nextRank[m_sendStep] == -1) {
+    while (m_sendStep < m_recvStep && m_sendStep < m_nextRank.size() && m_nextRank[m_sendStep] == -1) {
         m_sendStep++;
+    }
+
+    if (m_sendStep > m_nextRank.size()) {
+        if (!m_completionCb.IsNull()) {
+            m_completionCb();
+        }
+        return;
     }
 
     if (m_stepStu == 1 && m_recvStep > m_sendStep) {
@@ -297,6 +305,36 @@ void RdmaCC::ReduceScatter() {
         return;
     }
     NS_ASSERT_MSG(0, "The algorithm only support m_alg=1(ring) for ReduceScatter");
+}
+
+void RdmaCC::ClearComm() {
+    m_comm.clear();
+}
+
+void RdmaCC::P2P(uint16_t partnerCommRank, uint64_t size) {
+    m_op = 9;
+    NS_ASSERT_MSG(partnerCommRank < m_comm.size(),
+                  "P2P partnerCommRank out of range");
+
+    uint16_t minR = std::min(m_rank, partnerCommRank);
+    uint16_t maxR = std::max(m_rank, partnerCommRank);
+
+    if (m_rank == minR) {
+        // Sender
+        m_prevRank.push_back(-1);
+        m_nextRank.push_back(maxR);
+        m_packetSize.push_back(size);
+    } else if (m_rank == maxR) {
+        // Receiver
+        m_prevRank.push_back(minR);
+        m_nextRank.push_back(-1);
+        m_packetSize.push_back(0);
+    } else {
+        // Bystander (shouldn't happen in 2-node comm)
+        m_prevRank.push_back(-1);
+        m_nextRank.push_back(-1);
+        m_packetSize.push_back(0);
+    }
 }
 
 void RdmaCC::Allreduce() {
@@ -443,18 +481,17 @@ void RdmaCC::InitAgent() {
 }
 
 void RdmaCC::StartApplication(void) {
-    NS_ASSERT_MSG(m_comm.size() > 1, "The number of ranks should be greater than 1");
+    NS_ASSERT_MSG(m_comm.size() >= 2, "The number of ranks should be >= 2");
     NS_ASSERT(m_comm.size() <= 30000);
 
     NS_ASSERT_MSG(m_ip2app.IsNull() == false, "IP2APP callback should be set");
 
-    // NS_LOG_FUNCTION_NOARGS();
-
-    if (m_alg != 3) {
-        NS_ASSERT_MSG(m_chunkNum == 1, "The chunk number should be 1");
+    if (m_op != 9) { // Not P2P
+        if (m_alg != 3) {
+            NS_ASSERT_MSG(m_chunkNum == 1, "The chunk number should be 1");
+        }
+        NS_ASSERT_MSG(m_op > 3 && m_alg != 0, "Start collective communication");
     }
-
-    NS_ASSERT_MSG(m_op > 3 && m_alg != 0, "Start cllocative communication");
 
     m_recvStep = 1;
     m_sendStep = 0;

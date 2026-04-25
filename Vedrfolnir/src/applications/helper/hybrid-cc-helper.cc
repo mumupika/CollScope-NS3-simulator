@@ -32,11 +32,12 @@ void HybridCCHelper::ConfigureApplications(
     const std::vector<Ipv4Address> &allNodeIPs,
     const std::vector<uint16_t> &allNodePorts,
     Callback<Ptr<HybridCC>, Ipv4Address> ip2hybrid,
-    Callback<Ptr<RdmaCC>, Ipv4Address> ip2rdma) {
+    Callback<Ptr<RdmaCC>, Ipv4Address> ip2rdma,
+    Callback<Ptr<RdmaCC>, Ipv4Address> ip2ppRdma) {
     for (uint32_t i = 0; i < apps.GetN(); i++) {
         Ptr<HybridCC> hybrid = DynamicCast<HybridCC>(apps.Get(i));
         if (hybrid) {
-            hybrid->SetApplication(allNodeIPs, allNodePorts, ip2hybrid, ip2rdma);
+            hybrid->SetApplication(allNodeIPs, allNodePorts, ip2hybrid, ip2rdma, ip2ppRdma);
         }
     }
 }

@@ -84,7 +84,8 @@ public:
         const std::vector<Ipv4Address> &allNodeIPs,
         const std::vector<uint16_t> &allNodePorts,
         Callback<Ptr<HybridCC>, Ipv4Address> ip2hybrid,
-        Callback<Ptr<RdmaCC>, Ipv4Address> ip2rdma);
+        Callback<Ptr<RdmaCC>, Ipv4Address> ip2rdma,
+        Callback<Ptr<RdmaCC>, Ipv4Address> ip2ppRdma);
 
 private:
     ObjectFactory m_factory;

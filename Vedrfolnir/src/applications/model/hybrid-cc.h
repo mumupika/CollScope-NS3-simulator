@@ -58,13 +58,15 @@ public:
         const std::vector<Ipv4Address> &allNodeIPs,
         const std::vector<uint16_t> &allNodePorts,
         Callback<Ptr<HybridCC>, Ipv4Address> ip2hybrid,
-        Callback<Ptr<RdmaCC>, Ipv4Address> ip2rdma);
+        Callback<Ptr<RdmaCC>, Ipv4Address> ip2rdma,
+        Callback<Ptr<RdmaCC>, Ipv4Address> ip2ppRdma);
 
     // ============= Query Interfaces: Get the IP/Port/Rank/bottom RdmaCC ===================
     Ipv4Address GetIP();
     uint16_t GetPort();
     uint16_t GetRank();
     Ptr<RdmaCC> GetRdmaCC();
+    Ptr<RdmaCC> GetPPRdmaCC();
 
     // ============= P2P receive callbacks (called by remote HybridCC)
     void OnP2PFwdRecv(uint16_t chunkId);
@@ -110,8 +112,9 @@ private:
     void OnBwdCompute1Done();
     void OnBwdCompute2Done();
 
-    // P2P send (directly through RdmaDriver)
-    void SendP2P(uint16_t destRank, uint64_t size);
+    // P2P send (through RdmaCC)
+    void SendP2PForward(uint16_t destRank, uint64_t size);
+    void SendP2PBackward(uint16_t destRank, uint64_t size);
     void OnP2PSendComplete();
     uint16_t GetP2PFwdPartner();
     uint16_t GetP2PBwdPartner();
@@ -130,6 +133,7 @@ private:
 
     // Internal RdmaCC for DP group collective communication
     Ptr<RdmaCC> m_dpRdmaCC;
+    Ptr<RdmaCC> m_ppRdmaCC;
 
     // Basic parameters
     uint16_t m_rank;
@@ -170,6 +174,7 @@ private:
 
     // Callbacks
     Callback<Ptr<HybridCC>, Ipv4Address> m_ip2hybrid;
+    Callback<Ptr<RdmaCC>, Ipv4Address> m_ip2ppRdma;
 
     // Current operation state
     Phase m_phase;
@@ -182,6 +187,18 @@ private:
     uint16_t m_fwdChunkIdx;
     uint16_t m_bwdChunkIdx;
     uint16_t m_inflightFwd;
+
+    // Separate P2P receive completion counters for FWD and BWD
+    uint16_t m_fwdP2PCompleteCount;
+    uint16_t m_bwdP2PCompleteCount;
+
+    // Operation serialization: true when an AG/RS or P2P send is active
+    bool m_busy;
+
+    // P2P send context (saved at send time, used in completion callback)
+    bool m_p2pSendInProgress;
+    uint16_t m_pendingP2PChunkId;
+    bool m_pendingP2PIsForward;
 
     // Static schedule mode
     struct ScheduleEntry {

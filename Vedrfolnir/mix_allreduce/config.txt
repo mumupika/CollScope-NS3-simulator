@@ -62,7 +62,7 @@ AGENT_STEP_FCT 30000
 
 DP_GROUP_SIZE 4       
 NUM_PP_STAGES 4       
-NUM_CHUNKS 6          
+NUM_CHUNKS 5          
 TRAIN_MODE 1          
 SCHEDULE_MODE 0       
 MAX_INFLIGHT 100      

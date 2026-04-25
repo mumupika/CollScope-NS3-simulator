@@ -229,6 +229,12 @@ Ptr<RdmaCC> ip_to_hybrid_rdma(Ipv4Address ip)
 	return h->GetRdmaCC();
 }
 
+Ptr<RdmaCC> ip_to_pp_rdma(Ipv4Address ip)
+{
+	Ptr<HybridCC> h = ip_to_hybrid(ip);
+	return h->GetPPRdmaCC();
+}
+
 void qp_finish(FILE *fout, Ptr<RdmaQueuePair> q)
 {
 	uint32_t sid = ip_to_node_id(q->sip), did = ip_to_node_id(q->dip);
@@ -243,7 +249,12 @@ void qp_finish(FILE *fout, Ptr<RdmaQueuePair> q)
 	// sid, did, send step, receive step, prev rank, sport, dport, size (B), start_time, fct (ns), standalone_fct (ns)
 	if(q->sport == 10000 && q->m_pg == 3){
 		Ptr<RdmaCC> cc = ip_to_app(q->sip);
-		fprintf(fout, "%u %u %u %u %u %u %u %lu %lu %lu %lu\n", sid, did, cc->GetSendStep(), cc->GetRecvStep(), rank2nodeID[cc->GetPrevRank()], q->sport, q->dport, q->m_size, q->startTime.GetTimeStep(), (Simulator::Now() - q->startTime).GetTimeStep(), standalone_fct);
+		uint16_t prevRank = cc->GetPrevRank();
+		if (rank2nodeID.find(prevRank) != rank2nodeID.end()) {
+			fprintf(fout, "%u %u %u %u %u %u %u %lu %lu %lu %lu\n", sid, did, cc->GetSendStep(), cc->GetRecvStep(), rank2nodeID[prevRank], q->sport, q->dport, q->m_size, q->startTime.GetTimeStep(), (Simulator::Now() - q->startTime).GetTimeStep(), standalone_fct);
+		} else {
+			fprintf(fout, "### %u %u %u %u %lu %lu %lu %lu\n", sid, did, q->sport, q->dport, q->m_size, q->startTime.GetTimeStep(), (Simulator::Now() - q->startTime).GetTimeStep(), standalone_fct);
+		}
 	}
 	else
 		fprintf(fout, "### %u %u %u %u %lu %lu %lu %lu\n", sid, did, q->sport, q->dport, q->m_size, q->startTime.GetTimeStep(), (Simulator::Now() - q->startTime).GetTimeStep(), standalone_fct);
@@ -1412,7 +1423,8 @@ int main(int argc, char *argv[])
 	// Configure DP groups and internal RdmaCC
 	helper.ConfigureApplications(hybridApps, allNodeIPs, allNodePorts,
 		MakeCallback(&ip_to_hybrid),
-		MakeCallback(&ip_to_hybrid_rdma));
+		MakeCallback(&ip_to_hybrid_rdma),
+		MakeCallback(&ip_to_pp_rdma));
 	hybridApps.Start(Seconds(2));
 
 	// PFC_storm(n.Get(pfc_storm_node), pfc_storm_port, 3, pfc_storm_start, pfc_storm_duration);

@@ -62,6 +62,8 @@ public:
     void Reduce(uint16_t rootRank);
     void Allgather();
     void ReduceScatter();
+    void P2P(uint16_t partnerCommRank, uint64_t size);
+    void ClearComm();
 
     // Called by HybridCC to start/restart the ring communication
     virtual void StartApplication(void);

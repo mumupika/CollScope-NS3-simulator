@@ -123,6 +123,12 @@ HybridCC::HybridCC() :
     m_fwdChunkIdx(0),
     m_bwdChunkIdx(0),
     m_inflightFwd(0),
+    m_fwdP2PCompleteCount(0),
+    m_bwdP2PCompleteCount(0),
+    m_busy(false),
+    m_p2pSendInProgress(false),
+    m_pendingP2PChunkId(0),
+    m_pendingP2PIsForward(false),
     m_scheduleIdx(0) {
 }
 
@@ -183,6 +189,10 @@ Ptr<RdmaCC> HybridCC::GetRdmaCC() {
     return m_dpRdmaCC;
 }
 
+Ptr<RdmaCC> HybridCC::GetPPRdmaCC() {
+    return m_ppRdmaCC;
+}
+
 uint16_t HybridCC::GetNextPort() {
     return m_nextPort++;
 }
@@ -201,11 +211,12 @@ void HybridCC::SetApplication(
     const std::vector<Ipv4Address> &allNodeIPs,
     const std::vector<uint16_t> &allNodePorts,
     Callback<Ptr<HybridCC>, Ipv4Address> ip2hybrid,
-    Callback<Ptr<RdmaCC>, Ipv4Address> ip2rdma) {
+    Callback<Ptr<RdmaCC>, Ipv4Address> ip2rdma,
+    Callback<Ptr<RdmaCC>, Ipv4Address> ip2ppRdma) {
     NS_ASSERT(allNodeIPs.size() == allNodePorts.size());
     NS_ASSERT_MSG(m_dpGroupSize * m_numPPStages == allNodeIPs.size(),
                   "dp_group_size(" << m_dpGroupSize << ") * num_pp_stages(" << m_numPPStages
-                  << ") != total_nodes(" << allNodeIPs.size() << ")");
+                                   << ") != total_nodes(" << allNodeIPs.size() << ")");
 
     // Save all node info
     for (size_t i = 0; i < allNodeIPs.size(); i++) {
@@ -215,13 +226,14 @@ void HybridCC::SetApplication(
         m_nodes.push_back(ni);
     }
     m_ip2hybrid = ip2hybrid;
+    m_ip2ppRdma = ip2ppRdma;
 
     // Compute derived parameters
     InitDerivedParams();
 
     // Create internal RdmaCC for DP group communication
     m_dpRdmaCC = CreateObject<RdmaCC>();
-    m_dpRdmaCC->SetRank(m_rankInGroup); // rank within DP group
+    m_dpRdmaCC->SetRank(m_rankInGroup);
     m_dpRdmaCC->SetLocal(m_ip, m_port);
     m_dpRdmaCC->SetAlg(1); // ring algorithm
     m_dpRdmaCC->SetControl(m_win, m_baseRtt, m_pg);
@@ -236,10 +248,21 @@ void HybridCC::SetApplication(
     // Set IP2APP callback for RdmaCC ring communication
     m_dpRdmaCC->SetIP2APPCb(ip2rdma);
 
-    // Install RdmaCC on this node
-    m_dpRdmaCC -> SetStartTime(Seconds(1e9));          // Not to start early.
+    // Install m_dpRdmaCC on this node
+    m_dpRdmaCC->SetStartTime(Seconds(1e9));
     uint32_t app_index = GetNode()->AddApplication(m_dpRdmaCC);
     GetNode()->GetObject<RdmaDriver>()->m_rdma->m_agent_app = app_index;
+
+    // Create m_ppRdmaCC for P2P communication
+    m_ppRdmaCC = CreateObject<RdmaCC>();
+    m_ppRdmaCC->SetLocal(m_ip, m_port);
+    m_ppRdmaCC->SetAlg(1); // ring algorithm (used for P2P via RdmaCC framework)
+    m_ppRdmaCC->SetControl(m_win, m_baseRtt, m_pg);
+    m_ppRdmaCC->SetIP2APPCb(ip2ppRdma);
+
+    // Install m_ppRdmaCC on this node
+    m_ppRdmaCC->SetStartTime(Seconds(1e9));
+    GetNode()->AddApplication(m_ppRdmaCC);
 
     // Initialize P2P tracking arrays
     m_fwdP2PReceived.resize(m_numChunks, false);
@@ -263,14 +286,18 @@ void HybridCC::InitDerivedParams() {
 
 void HybridCC::StartApplication(void) {
     NS_LOG_INFO("HybridCC StartApplication rank=" << m_rank
-                                                  << " phase=" << m_phase << " scheduleMode=" << (int)m_scheduleMode);
+                                                  << " phase=" << m_phase
+                                                  << " scheduleMode=" << (int)m_scheduleMode);
+
+    m_fwdP2PCompleteCount = 0;
+    m_bwdP2PCompleteCount = 0;
+    m_busy = false;
+    m_p2pSendInProgress = false;
 
     if (m_scheduleMode == 1) {
-        // Static schedule mode
         BuildSchedule();
-        ExecuteNextEntry();
+        Simulator::Schedule(Seconds(0), &HybridCC::ExecuteNextEntry, this);
     } else {
-        // Event-driven mode
         if (m_isFirstStage) {
             m_fwdReadyCount = m_numChunks;
         }
@@ -278,7 +305,7 @@ void HybridCC::StartApplication(void) {
         m_fwdChunkIdx = 0;
         m_bwdChunkIdx = 0;
         m_inflightFwd = 0;
-        ScheduleNext_EventDriven();
+        Simulator::Schedule(Seconds(0), &HybridCC::ScheduleNext_EventDriven, this);
     }
 }
 
@@ -296,15 +323,15 @@ void HybridCC::Forward(uint16_t chunkId) {
     NS_LOG_INFO("HybridCC rank=" << m_rank << " Forward chunk=" << chunkId);
     m_currentChunkId = chunkId;
     m_phase = FWD_AG;
+    m_busy = true;
 
-    // Reset RdmaCC and configure for Allgather
     m_dpRdmaCC->Reset();
     uint64_t agSize = m_chunkSizeFwd / m_dpGroupSize;
     m_dpRdmaCC->SetChunk(agSize, 1);
     m_dpRdmaCC->SetCompletionCallback(
         MakeCallback(&HybridCC::OnFwdAGComplete, this));
     m_dpRdmaCC->Allgather();
-    m_dpRdmaCC->StartApplication();
+    Simulator::Schedule(Seconds(0), &RdmaCC::StartApplication, m_dpRdmaCC);
 }
 
 void HybridCC::OnFwdAGComplete() {
@@ -315,7 +342,8 @@ void HybridCC::OnFwdAGComplete() {
 
 void HybridCC::OnFwdComputeDone() {
     if (m_isLastStage) {
-        // Last stage: no P2P forward, self-trigger backward if train mode
+        // Last stage: no FWD P2P needed, forward is complete
+        m_inflightFwd--;
         if (m_train) {
             if (m_scheduleMode == 0) {
                 m_bwdReadyCount++;
@@ -323,12 +351,11 @@ void HybridCC::OnFwdComputeDone() {
                 m_bwdP2PReceived[m_currentChunkId] = true;
             }
         }
-        // Schedule next operation
-        ScheduleNext();
+        m_busy = false;
+        Simulator::Schedule(Seconds(0), &HybridCC::ScheduleNext, this);
     } else {
-        // P2P forward to next stage
         m_phase = FWD_P2P;
-        SendP2P(GetP2PFwdPartner(), m_chunkSizeFwd);
+        SendP2PForward(GetP2PFwdPartner(), m_chunkSizeFwd);
     }
 }
 
@@ -338,15 +365,15 @@ void HybridCC::Backward(uint16_t chunkId) {
     NS_LOG_INFO("HybridCC rank=" << m_rank << " Backward chunk=" << chunkId);
     m_currentChunkId = chunkId;
     m_phase = BWD_AG;
+    m_busy = true;
 
-    // Reset RdmaCC and configure for Allgather
     m_dpRdmaCC->Reset();
     uint64_t agSize = m_chunkSizeBwd / m_dpGroupSize;
     m_dpRdmaCC->SetChunk(agSize, 1);
     m_dpRdmaCC->SetCompletionCallback(
         MakeCallback(&HybridCC::OnBwdAGComplete, this));
     m_dpRdmaCC->Allgather();
-    m_dpRdmaCC->StartApplication();
+    Simulator::Schedule(Seconds(0), &RdmaCC::StartApplication, m_dpRdmaCC);
 }
 
 void HybridCC::OnBwdAGComplete() {
@@ -358,14 +385,13 @@ void HybridCC::OnBwdAGComplete() {
 void HybridCC::OnBwdCompute1Done() {
     m_phase = BWD_RS;
 
-    // Reset RdmaCC and configure for ReduceScatter
     m_dpRdmaCC->Reset();
     uint64_t rsSize = m_chunkSizeBwd / m_dpGroupSize;
     m_dpRdmaCC->SetChunk(rsSize, 1);
     m_dpRdmaCC->SetCompletionCallback(
         MakeCallback(&HybridCC::OnBwdRSComplete, this));
     m_dpRdmaCC->ReduceScatter();
-    m_dpRdmaCC->StartApplication();
+    Simulator::Schedule(Seconds(0), &RdmaCC::StartApplication, m_dpRdmaCC);
 }
 
 void HybridCC::OnBwdRSComplete() {
@@ -376,62 +402,86 @@ void HybridCC::OnBwdRSComplete() {
 
 void HybridCC::OnBwdCompute2Done() {
     if (m_isFirstStage) {
-        // First stage: no P2P backward
-        ScheduleNext();
+        // First stage: no BWD P2P needed, backward is complete
+        m_busy = false;
+        Simulator::Schedule(Seconds(0), &HybridCC::ScheduleNext, this);
     } else {
-        // P2P backward to previous stage
         m_phase = BWD_P2P;
-        SendP2P(GetP2PBwdPartner(), m_chunkSizeBwd);
+        SendP2PBackward(GetP2PBwdPartner(), m_chunkSizeBwd);
     }
 }
 
 // ===== P2P communication =====
 
-void HybridCC::SendP2P(uint16_t destRank, uint64_t size) {
-    NS_LOG_INFO("HybridCC rank=" << m_rank << " SendP2P to rank=" << destRank
+void HybridCC::SendP2PForward(uint16_t destRank, uint64_t size) {
+    NS_LOG_INFO("HybridCC rank=" << m_rank << " SendP2PFWD to rank=" << destRank
                                  << " size=" << size << " chunk=" << m_currentChunkId);
-    Ptr<RdmaDriver> rdma = GetNode()->GetObject<RdmaDriver>();
-    uint16_t sport = GetNextPort();
-    rdma->AddQueuePair(size, m_pg, m_ip, m_nodes[destRank].ip,
-                       sport, m_nodes[destRank].port,
-                       m_win, m_baseRtt,
-                       MakeCallback(&HybridCC::OnP2PSendComplete, this));
-}
 
-void HybridCC::OnP2PSendComplete() {
-    if (m_phase == FWD_P2P) {
-        // Notify next stage that forward P2P arrived
-        Ptr<HybridCC> dst = m_ip2hybrid(m_nodes[GetP2PFwdPartner()].ip);
-        dst->OnP2PFwdRecv(m_currentChunkId);
-    } else if (m_phase == BWD_P2P) {
-        // Notify previous stage that backward P2P arrived
-        Ptr<HybridCC> dst = m_ip2hybrid(m_nodes[GetP2PBwdPartner()].ip);
-        dst->OnP2PBwdRecv(m_currentChunkId);
+    // Direct callback notification: notify ALL ranks in the next stage
+    uint16_t targetStageBase = (m_ppStageIndex + 1) * m_dpGroupSize;
+    for (uint32_t i = 0; i < m_dpGroupSize; i++) {
+        Ptr<HybridCC> dst = m_ip2hybrid(m_nodes[targetStageBase + i].ip);
+        Simulator::Schedule(Seconds(0), &HybridCC::OnP2PFwdRecv, dst, m_currentChunkId);
     }
-    ScheduleNext();
+
+    // Track forward completion for inflight counting
+    m_inflightFwd--;
+    m_busy = false;
+
+    // Sender side: proceed to ScheduleNext
+    Simulator::Schedule(Seconds(0), &HybridCC::ScheduleNext, this);
 }
 
-// ===== P2P receive callbacks =====
+void HybridCC::SendP2PBackward(uint16_t destRank, uint64_t size) {
+    NS_LOG_INFO("HybridCC rank=" << m_rank << " SendP2PBWD to rank=" << destRank
+                                 << " size=" << size << " chunk=" << m_currentChunkId);
+
+    // Direct callback notification: notify ALL ranks in the previous stage
+    uint16_t targetStageBase = (m_ppStageIndex - 1) * m_dpGroupSize;
+    for (uint32_t i = 0; i < m_dpGroupSize; i++) {
+        Ptr<HybridCC> dst = m_ip2hybrid(m_nodes[targetStageBase + i].ip);
+        Simulator::Schedule(Seconds(0), &HybridCC::OnP2PBwdRecv, dst, m_currentChunkId);
+    }
+
+    m_busy = false;
+
+    // Sender side: proceed to ScheduleNext
+    Simulator::Schedule(Seconds(0), &HybridCC::ScheduleNext, this);
+}
+
+// ===== P2P receive callbacks (with completion counting) =====
 
 void HybridCC::OnP2PFwdRecv(uint16_t chunkId) {
-    NS_LOG_INFO("HybridCC rank=" << m_rank << " OnP2PFwdRecv chunk=" << chunkId);
-    if (m_scheduleMode == 0) {
-        m_fwdReadyCount++;
-        ScheduleNext_EventDriven();
-    } else {
-        m_fwdP2PReceived[chunkId] = true;
-        ExecuteNextEntry();
+    m_fwdP2PCompleteCount++;
+    NS_LOG_INFO("HybridCC rank=" << m_rank << " OnP2PFwdRecv chunk=" << chunkId
+                                 << " count=" << m_fwdP2PCompleteCount << "/" << m_dpGroupSize);
+
+    if (m_fwdP2PCompleteCount >= m_dpGroupSize) {
+        m_fwdP2PCompleteCount = 0;
+        if (m_scheduleMode == 0) {
+            m_fwdReadyCount++;
+            Simulator::Schedule(Seconds(0), &HybridCC::ScheduleNext_EventDriven, this);
+        } else {
+            m_fwdP2PReceived[chunkId] = true;
+            Simulator::Schedule(Seconds(0), &HybridCC::ExecuteNextEntry, this);
+        }
     }
 }
 
 void HybridCC::OnP2PBwdRecv(uint16_t chunkId) {
-    NS_LOG_INFO("HybridCC rank=" << m_rank << " OnP2PBwdRecv chunk=" << chunkId);
-    if (m_scheduleMode == 0) {
-        m_bwdReadyCount++;
-        ScheduleNext_EventDriven();
-    } else {
-        m_bwdP2PReceived[chunkId] = true;
-        ExecuteNextEntry();
+    m_bwdP2PCompleteCount++;
+    NS_LOG_INFO("HybridCC rank=" << m_rank << " OnP2PBwdRecv chunk=" << chunkId
+                                 << " count=" << m_bwdP2PCompleteCount << "/" << m_dpGroupSize);
+
+    if (m_bwdP2PCompleteCount >= m_dpGroupSize) {
+        m_bwdP2PCompleteCount = 0;
+        if (m_scheduleMode == 0) {
+            m_bwdReadyCount++;
+            Simulator::Schedule(Seconds(0), &HybridCC::ScheduleNext_EventDriven, this);
+        } else {
+            m_bwdP2PReceived[chunkId] = true;
+            Simulator::Schedule(Seconds(0), &HybridCC::ExecuteNextEntry, this);
+        }
     }
 }
 
@@ -439,16 +489,23 @@ void HybridCC::OnP2PBwdRecv(uint16_t chunkId) {
 
 void HybridCC::ScheduleNext() {
     if (m_scheduleMode == 0) {
-        ScheduleNext_EventDriven();
+        Simulator::Schedule(Seconds(0), &HybridCC::ScheduleNext_EventDriven, this);
     } else {
-        ExecuteNextEntry();
+        Simulator::Schedule(Seconds(0), &HybridCC::ExecuteNextEntry, this);
     }
 }
 
 // ----- Event-driven scheduling -----
 
 void HybridCC::ScheduleNext_EventDriven() {
-    // Check if all done
+    // If an operation (AG/RS/compute/P2P) is still in progress, cannot start new operations
+    if (m_busy) {
+        NS_LOG_INFO("HybridCC rank=" << m_rank << " busy, waiting"
+                                     << " fwdReady=" << m_fwdReadyCount
+                                     << " bwdReady=" << m_bwdReadyCount);
+        return;
+    }
+
     bool allFwdDone = (m_fwdChunkIdx >= m_numChunks);
     bool allBwdDone = (!m_train) || (m_bwdChunkIdx >= m_numChunks);
 
@@ -458,14 +515,13 @@ void HybridCC::ScheduleNext_EventDriven() {
         return;
     }
 
-    // Priority: backward > forward (to free memory)
+    // Priority: backward > forward
     if (m_train && m_bwdReadyCount > 0 && m_bwdChunkIdx < m_numChunks) {
         m_bwdReadyCount--;
         Backward(m_bwdChunkIdx++);
         return;
     }
 
-    // Forward: check ready count and inflight limit
     if (m_fwdReadyCount > 0 && m_fwdChunkIdx < m_numChunks
         && m_inflightFwd < m_maxInflight) {
         m_fwdReadyCount--;
@@ -474,7 +530,6 @@ void HybridCC::ScheduleNext_EventDriven() {
         return;
     }
 
-    // Idle: waiting for callbacks
     NS_LOG_INFO("HybridCC rank=" << m_rank << " idle "
                                  << " fwdReady=" << m_fwdReadyCount
                                  << " bwdReady=" << m_bwdReadyCount
@@ -499,7 +554,6 @@ void HybridCC::BuildSchedule() {
                                  << " steady_1f1b=" << num_1f1b
                                  << " cooldown=" << num_warmup);
 
-    // Phase 1: Warmup (forward only)
     for (uint16_t i = 0; i < num_warmup; i++) {
         ScheduleEntry e;
         e.type = OP_FORWARD;
@@ -507,7 +561,6 @@ void HybridCC::BuildSchedule() {
         m_schedule.push_back(e);
     }
 
-    // Phase 2: Steady state 1F1B
     for (uint16_t i = 0; i < num_1f1b; i++) {
         ScheduleEntry ef;
         ef.type = OP_FORWARD;
@@ -522,7 +575,6 @@ void HybridCC::BuildSchedule() {
         }
     }
 
-    // Phase 3: Cooldown (backward only)
     for (uint16_t i = 0; i < num_warmup; i++) {
         if (m_train) {
             ScheduleEntry eb;
@@ -534,7 +586,6 @@ void HybridCC::BuildSchedule() {
 
     m_scheduleIdx = 0;
 
-    // Log schedule
     std::cout << "Rank " << m_rank << " (stage " << m_ppStageIndex << ") schedule: ";
     for (size_t i = 0; i < m_schedule.size(); i++) {
         std::cout << (m_schedule[i].type == OP_FORWARD ? "F" : "B")
@@ -553,21 +604,18 @@ void HybridCC::ExecuteNextEntry() {
     ScheduleEntry &entry = m_schedule[m_scheduleIdx];
 
     if (entry.type == OP_FORWARD) {
-        // Check P2P dependency: non-first stages need fwd P2P to arrive first
-        // (except chunk 0 for first stage which starts immediately)
         if (!m_isFirstStage && !m_fwdP2PReceived[entry.chunkId]) {
             NS_LOG_INFO("HybridCC rank=" << m_rank
                                          << " waiting for FwdP2P chunk=" << entry.chunkId);
-            return; // Will be retried when OnP2PFwdRecv fires
+            return;
         }
         m_scheduleIdx++;
         Forward(entry.chunkId);
     } else {
-        // Backward: check P2P dependency
         if (!m_isLastStage && !m_bwdP2PReceived[entry.chunkId]) {
             NS_LOG_INFO("HybridCC rank=" << m_rank
                                          << " waiting for BwdP2P chunk=" << entry.chunkId);
-            return; // Will be retried when OnP2PBwdRecv fires
+            return;
         }
         m_scheduleIdx++;
         Backward(entry.chunkId);
