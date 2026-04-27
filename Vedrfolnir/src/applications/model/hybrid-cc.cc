@@ -335,7 +335,7 @@ void HybridCC::Forward(uint16_t chunkId) {
 }
 
 void HybridCC::OnFwdAGComplete() {
-    NS_LOG_INFO("HybridCC rank=" << m_rank << " FwdAG complete chunk=" << m_currentChunkId);
+    NS_LOG_DEBUG("HybridCC rank=" << m_rank << " FwdAG complete chunk=" << m_currentChunkId);
     m_phase = FWD_COMPUTE;
     Simulator::Schedule(m_tf, &HybridCC::OnFwdComputeDone, this);
 }
@@ -377,7 +377,7 @@ void HybridCC::Backward(uint16_t chunkId) {
 }
 
 void HybridCC::OnBwdAGComplete() {
-    NS_LOG_INFO("HybridCC rank=" << m_rank << " BwdAG complete chunk=" << m_currentChunkId);
+    NS_LOG_DEBUG("HybridCC rank=" << m_rank << " BwdAG complete chunk=" << m_currentChunkId);
     m_phase = BWD_COMPUTE_1;
     Simulator::Schedule(m_tb, &HybridCC::OnBwdCompute1Done, this);
 }
@@ -395,7 +395,7 @@ void HybridCC::OnBwdCompute1Done() {
 }
 
 void HybridCC::OnBwdRSComplete() {
-    NS_LOG_INFO("HybridCC rank=" << m_rank << " BwdRS complete chunk=" << m_currentChunkId);
+    NS_LOG_DEBUG("HybridCC rank=" << m_rank << " BwdRS complete chunk=" << m_currentChunkId);
     m_phase = BWD_COMPUTE_2;
     Simulator::Schedule(m_tb, &HybridCC::OnBwdCompute2Done, this);
 }
@@ -414,7 +414,7 @@ void HybridCC::OnBwdCompute2Done() {
 // ===== P2P communication =====
 
 void HybridCC::SendP2PForward(uint16_t destRank, uint64_t size) {
-    NS_LOG_INFO("HybridCC rank=" << m_rank << " SendP2PFWD to rank=" << destRank
+    NS_LOG_DEBUG("HybridCC rank=" << m_rank << " SendP2PFWD to rank=" << destRank
                                  << " size=" << size << " chunk=" << m_currentChunkId);
 
     // Direct callback notification: notify ALL ranks in the next stage
@@ -433,7 +433,7 @@ void HybridCC::SendP2PForward(uint16_t destRank, uint64_t size) {
 }
 
 void HybridCC::SendP2PBackward(uint16_t destRank, uint64_t size) {
-    NS_LOG_INFO("HybridCC rank=" << m_rank << " SendP2PBWD to rank=" << destRank
+    NS_LOG_DEBUG("HybridCC rank=" << m_rank << " SendP2PBWD to rank=" << destRank
                                  << " size=" << size << " chunk=" << m_currentChunkId);
 
     // Direct callback notification: notify ALL ranks in the previous stage
@@ -453,7 +453,7 @@ void HybridCC::SendP2PBackward(uint16_t destRank, uint64_t size) {
 
 void HybridCC::OnP2PFwdRecv(uint16_t chunkId) {
     m_fwdP2PCompleteCount++;
-    NS_LOG_INFO("HybridCC rank=" << m_rank << " OnP2PFwdRecv chunk=" << chunkId
+    NS_LOG_DEBUG("HybridCC rank=" << m_rank << " OnP2PFwdRecv chunk=" << chunkId
                                  << " count=" << m_fwdP2PCompleteCount << "/" << m_dpGroupSize);
 
     if (m_fwdP2PCompleteCount >= m_dpGroupSize) {
@@ -470,7 +470,7 @@ void HybridCC::OnP2PFwdRecv(uint16_t chunkId) {
 
 void HybridCC::OnP2PBwdRecv(uint16_t chunkId) {
     m_bwdP2PCompleteCount++;
-    NS_LOG_INFO("HybridCC rank=" << m_rank << " OnP2PBwdRecv chunk=" << chunkId
+    NS_LOG_DEBUG("HybridCC rank=" << m_rank << " OnP2PBwdRecv chunk=" << chunkId
                                  << " count=" << m_bwdP2PCompleteCount << "/" << m_dpGroupSize);
 
     if (m_bwdP2PCompleteCount >= m_dpGroupSize) {
@@ -500,7 +500,7 @@ void HybridCC::ScheduleNext() {
 void HybridCC::ScheduleNext_EventDriven() {
     // If an operation (AG/RS/compute/P2P) is still in progress, cannot start new operations
     if (m_busy) {
-        NS_LOG_INFO("HybridCC rank=" << m_rank << " busy, waiting"
+        NS_LOG_DEBUG("HybridCC rank=" << m_rank << " busy, waiting"
                                      << " fwdReady=" << m_fwdReadyCount
                                      << " bwdReady=" << m_bwdReadyCount);
         return;
@@ -530,7 +530,7 @@ void HybridCC::ScheduleNext_EventDriven() {
         return;
     }
 
-    NS_LOG_INFO("HybridCC rank=" << m_rank << " idle "
+    NS_LOG_DEBUG("HybridCC rank=" << m_rank << " idle "
                                  << " fwdReady=" << m_fwdReadyCount
                                  << " bwdReady=" << m_bwdReadyCount
                                  << " inflight=" << m_inflightFwd
@@ -605,7 +605,7 @@ void HybridCC::ExecuteNextEntry() {
 
     if (entry.type == OP_FORWARD) {
         if (!m_isFirstStage && !m_fwdP2PReceived[entry.chunkId]) {
-            NS_LOG_INFO("HybridCC rank=" << m_rank
+            NS_LOG_DEBUG("HybridCC rank=" << m_rank
                                          << " waiting for FwdP2P chunk=" << entry.chunkId);
             return;
         }
@@ -613,7 +613,7 @@ void HybridCC::ExecuteNextEntry() {
         Forward(entry.chunkId);
     } else {
         if (!m_isLastStage && !m_bwdP2PReceived[entry.chunkId]) {
-            NS_LOG_INFO("HybridCC rank=" << m_rank
+            NS_LOG_DEBUG("HybridCC rank=" << m_rank
                                          << " waiting for BwdP2P chunk=" << entry.chunkId);
             return;
         }
