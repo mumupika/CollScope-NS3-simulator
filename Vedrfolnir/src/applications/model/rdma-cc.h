@@ -71,7 +71,6 @@ public:
     virtual void DoDispose(void);
 
 private:
-
     void SendChunkFinish();
     void SendStep();
 

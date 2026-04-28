@@ -251,10 +251,10 @@ void HybridCC::SetApplication(
     m_bwdP2PReceived.resize(m_numChunks, false);
 
     NS_LOG_INFO("t=" << Simulator::Now().GetNanoSeconds() << "ns, rank=" << m_rank
-                                 << " ppStage=" << m_ppStageIndex
-                                 << " rankInGroup=" << m_rankInGroup
-                                 << " isFirstStage=" << m_isFirstStage
-                                 << " isLastStage=" << m_isLastStage);
+                     << " ppStage=" << m_ppStageIndex
+                     << " rankInGroup=" << m_rankInGroup
+                     << " isFirstStage=" << m_isFirstStage
+                     << " isLastStage=" << m_isLastStage);
 }
 
 void HybridCC::InitDerivedParams() {
@@ -268,8 +268,8 @@ void HybridCC::InitDerivedParams() {
 
 void HybridCC::StartApplication(void) {
     NS_LOG_INFO("t=" << Simulator::Now().GetNanoSeconds() << "ns, StartApplication rank=" << m_rank
-                                                  << " phase=" << m_phase
-                                                  << " scheduleMode=" << (int)m_scheduleMode);
+                     << " phase=" << m_phase
+                     << " scheduleMode=" << (int)m_scheduleMode);
 
     m_fwdP2PCompleteCount = 0;
     m_bwdP2PCompleteCount = 0;
@@ -396,7 +396,7 @@ void HybridCC::OnBwdCompute2Done() {
 
 void HybridCC::SendP2PForward(uint16_t destRank, uint64_t size) {
     NS_LOG_DEBUG("t=" << Simulator::Now().GetNanoSeconds() << "ns, rank=" << m_rank << " SendP2PFWD to rank=" << destRank
-                                << " size=" << size << " chunk=" << m_currentChunkId);
+                      << " size=" << size << " chunk=" << m_currentChunkId);
 
     // Save context for completion callback
     m_pendingP2PChunkId = m_currentChunkId;
@@ -420,7 +420,7 @@ void HybridCC::SendP2PForward(uint16_t destRank, uint64_t size) {
 
 void HybridCC::SendP2PBackward(uint16_t destRank, uint64_t size) {
     NS_LOG_DEBUG("t=" << Simulator::Now().GetNanoSeconds() << "ns, rank=" << m_rank << " SendP2PBWD to rank=" << destRank
-                                << " size=" << size << " chunk=" << m_currentChunkId);
+                      << " size=" << size << " chunk=" << m_currentChunkId);
 
     // Save context for completion callback
     m_pendingP2PChunkId = m_currentChunkId;
@@ -444,8 +444,8 @@ void HybridCC::SendP2PBackward(uint16_t destRank, uint64_t size) {
 
 void HybridCC::OnP2PSendComplete() {
     NS_LOG_DEBUG("t=" << Simulator::Now().GetNanoSeconds() << "ns, rank=" << m_rank << " OnP2PSendComplete"
-                                << " chunk=" << m_pendingP2PChunkId
-                                << " isForward=" << m_pendingP2PIsForward);
+                      << " chunk=" << m_pendingP2PChunkId
+                      << " isForward=" << m_pendingP2PIsForward);
 
     // Notify the sender group's leading rank to count this completion
     uint16_t senderLeadingRank = m_ppStageIndex * m_dpGroupSize;
@@ -465,7 +465,7 @@ void HybridCC::OnP2PSendComplete() {
 void HybridCC::OnP2PFwdStep(uint16_t chunkId) {
     m_fwdP2PCompleteCount++;
     NS_LOG_DEBUG("t=" << Simulator::Now().GetNanoSeconds() << "ns, rank=" << m_rank << " OnP2PFwdStep chunk=" << chunkId
-                                << " count=" << m_fwdP2PCompleteCount << "/" << m_dpGroupSize);
+                      << " count=" << m_fwdP2PCompleteCount << "/" << m_dpGroupSize);
 
     if (m_fwdP2PCompleteCount >= m_dpGroupSize) {
         m_fwdP2PCompleteCount = 0;
@@ -487,7 +487,7 @@ void HybridCC::OnP2PFwdStep(uint16_t chunkId) {
 void HybridCC::OnP2PBwdStep(uint16_t chunkId) {
     m_bwdP2PCompleteCount++;
     NS_LOG_DEBUG("t=" << Simulator::Now().GetNanoSeconds() << "ns, rank=" << m_rank << " OnP2PBwdStep chunk=" << chunkId
-                                << " count=" << m_bwdP2PCompleteCount << "/" << m_dpGroupSize);
+                      << " count=" << m_bwdP2PCompleteCount << "/" << m_dpGroupSize);
 
     if (m_bwdP2PCompleteCount >= m_dpGroupSize) {
         m_bwdP2PCompleteCount = 0;
@@ -593,8 +593,8 @@ void HybridCC::ScheduleNext_EventDriven() {
     // If an operation (AG/RS/compute/P2P) is still in progress, cannot start new operations
     if (m_busy) {
         NS_LOG_DEBUG("t=" << Simulator::Now().GetNanoSeconds() << "ns, rank=" << m_rank << " busy, waiting"
-                                     << " fwdReady=" << m_fwdReadyCount
-                                     << " bwdReady=" << m_bwdReadyCount);
+                          << " fwdReady=" << m_fwdReadyCount
+                          << " bwdReady=" << m_bwdReadyCount);
         return;
     }
 
@@ -623,11 +623,11 @@ void HybridCC::ScheduleNext_EventDriven() {
     }
 
     NS_LOG_DEBUG("t=" << Simulator::Now().GetNanoSeconds() << "ns, rank=" << m_rank << " idle "
-                                 << " fwdReady=" << m_fwdReadyCount
-                                 << " bwdReady=" << m_bwdReadyCount
-                                 << " inflight=" << m_inflightFwd
-                                 << " fwdIdx=" << m_fwdChunkIdx
-                                 << " bwdIdx=" << m_bwdChunkIdx);
+                      << " fwdReady=" << m_fwdReadyCount
+                      << " bwdReady=" << m_bwdReadyCount
+                      << " inflight=" << m_inflightFwd
+                      << " fwdIdx=" << m_fwdChunkIdx
+                      << " bwdIdx=" << m_bwdChunkIdx);
 }
 
 // ----- Static schedule (MegatronLM) -----
@@ -642,9 +642,9 @@ void HybridCC::BuildSchedule() {
     uint16_t num_1f1b = m_numChunks - num_warmup;
 
     NS_LOG_INFO("t=" << Simulator::Now().GetNanoSeconds() << "ns, rank=" << m_rank
-                                 << " BuildSchedule: warmup=" << num_warmup
-                                 << " steady_1f1b=" << num_1f1b
-                                 << " cooldown=" << num_warmup);
+                     << " BuildSchedule: warmup=" << num_warmup
+                     << " steady_1f1b=" << num_1f1b
+                     << " cooldown=" << num_warmup);
 
     for (uint16_t i = 0; i < num_warmup; i++) {
         ScheduleEntry e;
@@ -698,7 +698,7 @@ void HybridCC::ExecuteNextEntry() {
     if (entry.type == OP_FORWARD) {
         if (!m_isFirstStage && !m_fwdP2PReceived[entry.chunkId]) {
             NS_LOG_DEBUG("t=" << Simulator::Now().GetNanoSeconds() << "ns, rank=" << m_rank
-                                         << " waiting for FwdP2P chunk=" << entry.chunkId);
+                              << " waiting for FwdP2P chunk=" << entry.chunkId);
             return;
         }
         m_scheduleIdx++;
@@ -706,7 +706,7 @@ void HybridCC::ExecuteNextEntry() {
     } else {
         if (!m_isLastStage && !m_bwdP2PReceived[entry.chunkId]) {
             NS_LOG_DEBUG("t=" << Simulator::Now().GetNanoSeconds() << "ns, rank=" << m_rank
-                                         << " waiting for BwdP2P chunk=" << entry.chunkId);
+                              << " waiting for BwdP2P chunk=" << entry.chunkId);
             return;
         }
         m_scheduleIdx++;
