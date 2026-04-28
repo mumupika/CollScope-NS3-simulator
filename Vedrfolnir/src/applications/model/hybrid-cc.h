@@ -58,19 +58,30 @@ public:
         const std::vector<Ipv4Address> &allNodeIPs,
         const std::vector<uint16_t> &allNodePorts,
         Callback<Ptr<HybridCC>, Ipv4Address> ip2hybrid,
-        Callback<Ptr<RdmaCC>, Ipv4Address> ip2rdma,
-        Callback<Ptr<RdmaCC>, Ipv4Address> ip2ppRdma);
+        Callback<Ptr<RdmaCC>, Ipv4Address> ip2rdma);
 
     // ============= Query Interfaces: Get the IP/Port/Rank/bottom RdmaCC ===================
     Ipv4Address GetIP();
     uint16_t GetPort();
     uint16_t GetRank();
     Ptr<RdmaCC> GetRdmaCC();
-    Ptr<RdmaCC> GetPPRdmaCC();
 
-    // ============= P2P receive callbacks (called by remote HybridCC)
+    // ============= P2P step counting (called on sender leading rank) =============
+    void OnP2PFwdStep(uint16_t chunkId);
+    void OnP2PBwdStep(uint16_t chunkId);
+
+    // ============= P2P completion callbacks =============
+    // Called on each sender rank when its QP completes (via leading rank relay)
+    void OnP2PFwdComplete(uint16_t chunkId);
+    void OnP2PBwdComplete(uint16_t chunkId);
+    // Called on each receiver rank when P2P data is received
     void OnP2PFwdRecv(uint16_t chunkId);
     void OnP2PBwdRecv(uint16_t chunkId);
+    // Receiver-side mode-specific handlers (called by leading rank broadcast)
+    void OnP2PFwdRecv_EventDriven(uint16_t chunkId);
+    void OnP2PBwdRecv_EventDriven(uint16_t chunkId);
+    void OnP2PFwdRecv_Static(uint16_t chunkId);
+    void OnP2PBwdRecv_Static(uint16_t chunkId);
 
 protected:
     virtual void DoDispose(void);
@@ -133,7 +144,6 @@ private:
 
     // Internal RdmaCC for DP group collective communication
     Ptr<RdmaCC> m_dpRdmaCC;
-    Ptr<RdmaCC> m_ppRdmaCC;
 
     // Basic parameters
     uint16_t m_rank;
@@ -174,7 +184,6 @@ private:
 
     // Callbacks
     Callback<Ptr<HybridCC>, Ipv4Address> m_ip2hybrid;
-    Callback<Ptr<RdmaCC>, Ipv4Address> m_ip2ppRdma;
 
     // Current operation state
     Phase m_phase;
@@ -196,7 +205,6 @@ private:
     bool m_busy;
 
     // P2P send context (saved at send time, used in completion callback)
-    bool m_p2pSendInProgress;
     uint16_t m_pendingP2PChunkId;
     bool m_pendingP2PIsForward;
 

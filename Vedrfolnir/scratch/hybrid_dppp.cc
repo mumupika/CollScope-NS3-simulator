@@ -229,12 +229,6 @@ Ptr<RdmaCC> ip_to_hybrid_rdma(Ipv4Address ip)
 	return h->GetRdmaCC();
 }
 
-Ptr<RdmaCC> ip_to_pp_rdma(Ipv4Address ip)
-{
-	Ptr<HybridCC> h = ip_to_hybrid(ip);
-	return h->GetPPRdmaCC();
-}
-
 void qp_finish(FILE *fout, Ptr<RdmaQueuePair> q)
 {
 	uint32_t sid = ip_to_node_id(q->sip), did = ip_to_node_id(q->dip);
@@ -1423,8 +1417,7 @@ int main(int argc, char *argv[])
 	// Configure DP groups and internal RdmaCC
 	helper.ConfigureApplications(hybridApps, allNodeIPs, allNodePorts,
 		MakeCallback(&ip_to_hybrid),
-		MakeCallback(&ip_to_hybrid_rdma),
-		MakeCallback(&ip_to_pp_rdma));
+		MakeCallback(&ip_to_hybrid_rdma));
 	hybridApps.Start(Seconds(2));
 
 	// PFC_storm(n.Get(pfc_storm_node), pfc_storm_port, 3, pfc_storm_start, pfc_storm_duration);
