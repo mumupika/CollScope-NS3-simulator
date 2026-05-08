@@ -40,6 +40,9 @@ TypeId SwitchNode::GetTypeId (void)
 			UintegerValue(9000),
 			MakeUintegerAccessor(&SwitchNode::m_maxRtt),
 			MakeUintegerChecker<uint32_t>())
+	.AddTraceSource("RecordRoutes", 
+			"Record the switchNode Id.", 
+			MakeTraceSourceAccessor(&SwitchNode::m_qpRoutes))
   ;
   return tid;
 }
@@ -402,6 +405,17 @@ void SwitchNode::ClearTable(){
 
 // This function can only be called in switch mode
 bool SwitchNode::SwitchReceiveFromDevice(Ptr<NetDevice> device, Ptr<Packet> packet, CustomHeader &ch){
+	// Record Routes~
+	if (ch.l3Prot == 0x11) {	// is udp;
+		uint32_t sip = ch.sip;
+		uint32_t dip = ch.dip;
+		uint32_t sport = ch.udp.sport;
+		uint32_t dport = ch.udp.dport;
+		int switch_id = GetId();
+		// TraceCallback.
+		m_qpRoutes(sip, dip, sport, dport, switch_id);
+	}
+
 	SendToDev(packet, ch);
 	return true;
 }

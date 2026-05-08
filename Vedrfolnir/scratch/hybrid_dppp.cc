@@ -4,6 +4,7 @@
 #include <iostream>
 #include <fstream>
 #include <unordered_map>
+#include <unordered_set>
 #include <set>
 #include <time.h>
 #include "ns3/core-module.h"
@@ -214,6 +215,45 @@ Ptr<RdmaCC> ip_to_hybrid_rdma(Ipv4Address ip) {
     return h->GetRdmaCC();
 }
 
+// Four tuple Hash for record the passing datas.
+struct fourTuples {
+    uint32_t sid;
+    uint32_t did;
+    uint16_t sport;
+    uint16_t dport;
+    fourTuples(uint32_t src_id, uint32_t dst_id, uint32_t src_port, uint32_t dst_port) :
+        sid(src_id), did(dst_id), sport(src_port), dport(dst_port) {
+    }
+    bool operator==(const fourTuples &others) const {
+        return sid == others.sid && did == others.did && sport == others.sport && dport == others.dport;
+    }
+};
+struct fourTuplesHash {
+    std::size_t operator()(const fourTuples &tup) const {
+        std::size_t seed = 0;
+        std::hash<uint32_t> hasher1;
+        std::hash<uint16_t> hasher2;
+        seed ^= hasher1(tup.sid) + 0x9e3779b9 + (seed << 6) + (seed >> 2);
+        seed ^= hasher1(tup.did) + 0x9e3779b9 + (seed << 6) + (seed >> 2);
+        seed ^= hasher2(tup.sport) + 0x9e3779b9 + (seed << 6) + (seed >> 2);
+        seed ^= hasher2(tup.dport) + 0x9e3779b9 + (seed << 6) + (seed >> 2);
+        return seed;
+    }
+};
+// (sip, dip, sport, dport) => switch #ids; routes_unique for deduplicate.
+std::unordered_map<fourTuples, std::vector<int>, fourTuplesHash> routes;
+std::unordered_map<fourTuples, std::unordered_set<int>, fourTuplesHash> routes_unique;
+
+// Record the routes for qps.
+void AddRoutes(uint32_t sip, uint32_t dip, uint16_t sport, uint16_t dport, int switch_id) {
+    fourTuples tup(sip, dip, sport, dport);
+    std::unordered_set<int> &routes_set = routes_unique[tup];
+    if (routes_set.find(switch_id) == routes_set.end()) {
+        routes_set.insert(switch_id);
+        routes[tup].push_back(switch_id);
+    }
+}
+
 void qp_finish(FILE *fout, Ptr<RdmaQueuePair> q) {
     uint32_t sid = ip_to_node_id(q->sip), did = ip_to_node_id(q->dip);
     NS_LOG_INFO("qp_finish " << sid << " " << did << " " << q->sport << " " << q->dport);
@@ -236,6 +276,15 @@ void qp_finish(FILE *fout, Ptr<RdmaQueuePair> q) {
     } else
         fprintf(fout, "### %u %u %u %u %lu %lu %lu %lu\n", sid, did, q->sport, q->dport, q->m_size, q->startTime.GetTimeStep(), (Simulator::Now() - q->startTime).GetTimeStep(), standalone_fct);
 
+    // Now get the Routing Message.
+    fourTuples tup(q -> sip.Get(), q -> dip.Get(), q -> sport, q -> dport);
+    std::vector<int> &switch_ids = routes.at(tup);
+    fprintf(fout, "Routed Switch Ids: \n");
+    for (int sw_id: switch_ids) {
+        fprintf(fout, "%d ", sw_id);
+    }
+    fprintf(fout, "\n\n");
+
     fflush(fout);
     int a = 0; ////
 
@@ -243,6 +292,10 @@ void qp_finish(FILE *fout, Ptr<RdmaQueuePair> q) {
     Ptr<Node> dstNode = n.Get(did);
     Ptr<RdmaDriver> rdma = dstNode->GetObject<RdmaDriver>();
     rdma->m_rdma->DeleteRxQp(q->sip.Get(), q->m_pg, q->sport);
+
+    // Clear the record.
+    routes.erase(tup);
+    routes_unique.erase(tup);
 }
 
 void get_pfc(FILE *fout, Ptr<QbbNetDevice> dev, uint32_t type) {
@@ -991,6 +1044,9 @@ int main(int argc, char *argv[]) {
                 sw->SetAttribute("AckHighPrio", UintegerValue(0));
             // if (epoch_time > 0)
             // 	sw->epochTime = epoch_time;
+            
+            // Set for switch's tracing.
+            sw -> TraceConnectWithoutContext("RecordRoutes", MakeCallback(AddRoutes));
         }
     }
 

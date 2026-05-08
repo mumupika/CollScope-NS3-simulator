@@ -108,6 +108,9 @@ public:
 	// for RDMA NPA detect
 	FILE *fp_telemetry = NULL;
 	uint32_t epochTime = 1000000;
+
+	// TracedCallback for routes.
+	TracedCallback<uint32_t, uint32_t, uint16_t, uint16_t, int> m_qpRoutes;
 };
 
 } /* namespace ns3 */
