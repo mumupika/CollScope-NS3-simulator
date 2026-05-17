@@ -106,11 +106,6 @@ private:
     uint32_t m_win;     // bound of on-the-fly packets
     uint64_t m_baseRtt; // base Rtt
     uint16_t m_pg;      // priority group
-
-    // CC NPA
-    void SendNotification();
-    void SetAgent();
-    void InitAgent();
 };
 
 } // namespace ns3

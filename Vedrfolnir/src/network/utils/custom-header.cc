@@ -185,19 +185,6 @@ void CustomHeader::Serialize (Buffer::Iterator start) const{
 		  i.WriteU32 (pfc.time);
 		  i.WriteU32 (pfc.qlen);
 		  i.WriteU8 (pfc.qIndex);
-	  }else if (l3Prot == 0xFB){ 
-		i.WriteU32(signal.seq);
-		i.WriteU32(signal.eventID);
-	  }else if(l3Prot == 0xFA){ 
-		i.WriteU32(polling.seq);
-		i.WriteU32(polling.eventID);
-		i.WriteU16(polling.sport);
-		i.WriteU16(polling.dport);
-	  }else if(l3Prot == 0xF9){
-		i.WriteU16(notif.sport);
-		i.WriteU16(notif.dport);
-		i.WriteU16(notif.times);
-		i.WriteU32(notif.step);
 	  }
   }
 }
@@ -337,22 +324,6 @@ CustomHeader::Deserialize (Buffer::Iterator start)
 		  pfc.qlen = i.ReadU32 ();
 		  pfc.qIndex = i.ReadU8 ();
 		  l4Size = 9;
-	  } else if (l3Prot == 0xFB){ 
-		  signal.seq = i.ReadU32();
-		  signal.eventID = i.ReadU32();
-		  l4Size = 8;
-	  } else if(l3Prot == 0xFA){
-		polling.seq = i.ReadU32();
-		polling.eventID = i.ReadU32();
-		polling.sport = i.ReadU16();
-		polling.dport = i.ReadU16();
-		l4Size = 8;
-	  } else if(l3Prot == 0xF9){
-		notif.sport = i.ReadU16();
-		notif.dport = i.ReadU16();
-		notif.times = i.ReadU16();
-		notif.step = i.ReadU32();
-		l4Size = 8;
 	  }
   }
 

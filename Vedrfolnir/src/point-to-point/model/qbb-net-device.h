@@ -127,10 +127,6 @@ public:
 
 	void SendPfc(uint32_t qIndex, uint32_t type); // type: 0 = pause, 1 = resume
 
-  // RDMA NPA
-  bool GetEgressPaused(uint32_t qIndex);
-  void SendSignal(uint32_t eventID);
-
 	TracedCallback<Ptr<const Packet>, uint32_t> m_traceEnqueue;
 	TracedCallback<Ptr<const Packet>, uint32_t> m_traceDequeue;
 	TracedCallback<Ptr<const Packet>, uint32_t> m_traceDrop;

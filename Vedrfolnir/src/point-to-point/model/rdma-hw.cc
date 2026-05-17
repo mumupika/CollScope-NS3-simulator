@@ -448,14 +448,6 @@ int RdmaHw::ReceiveAck(Ptr<Packet> p, CustomHeader &ch){
 	return 0;
 }
 
-// CC NPA
-int RdmaHw::ReceiveNotif(Ptr<Packet> p, CustomHeader &ch){
-	uint32_t step = ch.notif.step;
-	uint16_t times = ch.notif.times;
-	
-	this->m_agent_step[step] += times;
-}
-
 int RdmaHw::Receive(Ptr<Packet> p, CustomHeader &ch){
 	if (ch.l3Prot == 0x11){ // UDP
 		ReceiveUdp(p, ch);
@@ -465,9 +457,6 @@ int RdmaHw::Receive(Ptr<Packet> p, CustomHeader &ch){
 		ReceiveAck(p, ch);
 	}else if (ch.l3Prot == 0xFC){ // ACK
 		ReceiveAck(p, ch);
-	}
-	else if (ch.l3Prot == 0xF9){ // Notif
-		ReceiveNotif(p, ch);
 	}
 	return 0;
 }
@@ -567,68 +556,6 @@ void RdmaHw::RedistributeQp(){
 	}
 }
 
-
-// CC NPA
-void ScheduleAckClock(uint64_t seq, Ptr<RdmaQueuePair> qp, Ptr<QbbNetDevice> dev, Ptr<RdmaHw> rdmaHw){
-
-	auto app = DynamicCast<RdmaCC>(rdmaHw->m_node->GetApplication(rdmaHw->m_agent_app));
-	// Vedrfolnir-v1
-	// if(rdmaHw->m_agent_step == 0 || app->GetSendStep() == app->GetRecvStep() || seq <= qp->snd_una){
-	// 	return;
-	// }
-	// rdmaHw->m_agent_step = 0;
-
-	// Vedrfolnir-v1.1
-	// if(rdmaHw->m_agent_step == 0 || seq <= qp->snd_una){
-	// 	return;
-	// }
-	// rdmaHw->m_agent_step = 0;
-
-	// Vedrfolnir-v2
-	if(qp->sport != rdmaHw->m_mon_sport){
-		return;
-	}
-	uint32_t ss = app->GetSendStep();
-	uint64_t it = Simulator::Now().GetTimeStep() - rdmaHw->m_last_detect_time;
-	if(seq <= qp->snd_una || rdmaHw->m_agent_step[ss] == 0 || (rdmaHw->m_last_detect_time != 0 && it < rdmaHw->m_detect_interval)){
-		return;
-	}
-	rdmaHw->m_agent_step[ss]--;
-	rdmaHw->m_last_detect_time = Simulator::Now().GetTimeStep();
-
-	// Hawkeye
-	// if(seq <= qp->snd_una){
-	// 	return;
-	// }
-
-	uint64_t interval = Simulator::Now().GetTimeStep() - qp->npa.m_lastPollingTime;
-	if(interval > 3000000){
-		qp->npa.m_lastPollingTime = Simulator::Now().GetTimeStep();
-
-		Ptr<Packet> p = Create<Packet>(0);
-		CustomHeader pollingHdr(CustomHeader::L4_Header);
-		pollingHdr.l3Prot = 0xFA;
-		pollingHdr.polling.seq = seq;
-		pollingHdr.polling.eventID = Simulator::Now().GetTimeStep() - 1000000000;
-		pollingHdr.polling.sport = qp->sport;
-		pollingHdr.polling.dport = qp->dport;
-		p->AddHeader(pollingHdr);
-		Ipv4Header head;
-		head.SetDestination(Ipv4Address(qp->dip));
-		head.SetSource(Ipv4Address(qp->sip));
-		head.SetProtocol(0xFA);
-		head.SetTtl(64);
-		head.SetPayloadSize(p->GetSize());
-		p->AddHeader(head);
-		PppHeader ppp;
-		ppp.SetProtocol(0x0021);//IPv4
-		p->AddHeader(ppp);
-
-		dev->RdmaEnqueueHighPrioQ(p);
-		dev->TriggerTransmit();
-	}
-}
-
 Ptr<Packet> RdmaHw::GetNxtPacket(Ptr<RdmaQueuePair> qp){
 	
 	uint32_t payload_size = qp->GetBytesLeft();
@@ -663,11 +590,6 @@ Ptr<Packet> RdmaHw::GetNxtPacket(Ptr<RdmaQueuePair> qp){
 	// update state
 	qp->snd_nxt += payload_size;
 	qp->m_ipid++;
-
-	// RDMA NPA
-	if(m_agent_flag){
-		Simulator::Schedule(MicroSeconds(m_agent_threshold), &ScheduleAckClock, qp->snd_nxt, qp, m_nic[GetNicIdxOfQp(qp)].dev, this);
-	}
 
 	// return
 	return p;

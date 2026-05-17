@@ -26,52 +26,6 @@ class SwitchNode : public Node{
 	uint64_t m_lastPktTs[pCnt]; // ns
 	double m_u[pCnt];
 
-	// RDMA NPA
-	static const uint32_t flowHashSeed = 0x233;	// Seed for flow hash
-	static const uint32_t flowEntryNum = (1 << 12);	// Number of flowTelemetryData entries
-	static const uint32_t epochNum = 2;	//
-	static const uint32_t portToPortSlot = 5;	// port to port bytes slot
-	uint64_t m_lastSignalEpoch;	// last signal time
-	uint32_t m_slotIdx;	// current epoch index
-	uint64_t m_lastPollingEpoch[pCnt];	// last polling epoch
-	uint32_t m_lastEventID[pCnt];	// last event ID
-	struct FiveTuple{
-		uint32_t srcIp;
-		uint32_t dstIp;
-		uint16_t srcPort;
-		uint16_t dstPort;
-		uint8_t protocol;
-		bool operator==(const FiveTuple &other) const{
-			return srcIp == other.srcIp
-				&& dstIp == other.dstIp 
-				&& srcPort == other.srcPort 
-				&& dstPort == other.dstPort 
-				&& protocol == other.protocol;
-		}
-	};
-	
-	struct FlowTelemetryData{
-		uint32_t minSeq;           // 32-bit min_seq
-		uint32_t maxSeq;           // 32-bit max_seq
-		uint32_t packetNum;		// 32-bit packet_num
-		uint32_t enqQdepth;		// 32-bit enq_q_depth
-		uint32_t pfcPausedPacketNum;	// 32-bit pfc_paused_packet_num
-
-		FiveTuple flowTuple;			// 5-tuple
-		uint64_t lastTimeStep;		// last timestep
-	};
-	struct PortTelemetryData{
-		uint32_t enqQdepth;		// 32-bit enq_q_depth
-		uint32_t pfcPausedPacketNum;
-		uint32_t packetNum;		// 32-bit packet_num
-
-		uint32_t lastTimeStep;		// last timestep >> 5
-	};
-	FlowTelemetryData m_flowTelemetryData[pCnt][epochNum][flowEntryNum]; // flow telemetry data
-	PortTelemetryData m_portTelemetryData[epochNum][pCnt]; // port telemetry data
-	uint32_t m_portToPortBytes[pCnt][pCnt]; // bytes from port to port
-	uint32_t m_portToPortBytesSlot[pCnt][pCnt][portToPortSlot]; // port to port bytes slot
-
 protected:
 	bool m_ecnEnabled;
 	uint32_t m_ccMode;
@@ -85,8 +39,6 @@ private:
 	static uint32_t EcmpHash(const uint8_t* key, size_t len, uint32_t seed);
 	void CheckAndSendPfc(uint32_t inDev, uint32_t qIndex);
 	void CheckAndSendResume(uint32_t inDev, uint32_t qIndex);
-	// RDMA NPA
-	static uint32_t FiveTupleHash(const FiveTuple &fiveTuple);
 	uint32_t GetEpochIdx();
 	void OutputTelemetry(uint32_t port, uint32_t inport, bool isSignal);
 
@@ -104,10 +56,6 @@ public:
 	// for approximate calc in PINT
 	int logres_shift(int b, int l);
 	int log2apprx(int x, int b, int m, int l); // given x of at most b bits, use most significant m bits of x, calc the result in l bits
-
-	// for RDMA NPA detect
-	FILE *fp_telemetry = NULL;
-	uint32_t epochTime = 1000000;
 
 	// TracedCallback for routes.
 	TracedCallback<uint32_t, uint32_t, uint16_t, uint16_t, int> m_qpRoutes;

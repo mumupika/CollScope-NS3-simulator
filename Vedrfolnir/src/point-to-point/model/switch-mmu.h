@@ -59,10 +59,6 @@ public:
 	uint32_t ingress_bytes[pCnt][qCnt];
 	uint32_t paused[pCnt][qCnt];
 	uint32_t egress_bytes[pCnt][qCnt];
-
-	//RDMA NPA
-	uint32_t ingress_queue_length[pCnt][qCnt];
-	uint32_t egress_queue_length[pCnt][qCnt];
 };
 
 } /* namespace ns3 */

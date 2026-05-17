@@ -244,7 +244,6 @@ void HybridCC::SetApplication(
     // Install m_dpRdmaCC on this node
     m_dpRdmaCC->SetStartTime(Seconds(1e9));
     uint32_t app_index = GetNode()->AddApplication(m_dpRdmaCC);
-    GetNode()->GetObject<RdmaDriver>()->m_rdma->m_agent_app = app_index;
 
     // Initialize P2P tracking arrays
     m_fwdP2PReceived.resize(m_numChunks, false);

@@ -469,17 +469,6 @@ void RdmaCC::Allreduce() {
     // TODO
 }
 
-void RdmaCC::InitAgent() {
-    NS_LOG_FUNCTION_NOARGS();
-
-    Ptr<RdmaHw> rdmaHw = GetNode()->GetObject<RdmaDriver>()->m_rdma;
-    rdmaHw->m_agent_step.push_back(0);
-    for (uint32_t i = 0; i < m_nextRank.size(); i++) {
-        rdmaHw->m_agent_step.push_back(rdmaHw->m_detect_times);
-    }
-    rdmaHw->m_last_detect_time = 0;
-}
-
 void RdmaCC::StartApplication(void) {
     NS_ASSERT_MSG(m_comm.size() >= 2, "The number of ranks should be >= 2");
     NS_ASSERT(m_comm.size() <= 30000);
@@ -508,83 +497,6 @@ void RdmaCC::DoDispose(void) {
 void RdmaCC::StopApplication() {
     NS_LOG_FUNCTION_NOARGS();
     // TODO: reset the application
-}
-
-// CC NPA
-void RdmaCC::SendNotification() {
-    NS_LOG_FUNCTION_NOARGS();
-
-    NS_ASSERT(m_sendStep <= m_recvStep);
-
-    if (m_sendStep < m_recvStep) { // not waiting
-        return;
-    }
-
-    NS_ASSERT(m_prevRank[m_sendStep - 1] != -1);
-
-    NS_LOG_FUNCTION("Rank: " << m_rank << "  SendNotification: m_sendStep = " << m_sendStep);
-
-    Ptr<RdmaHw> rdmaHw = GetNode()->GetObject<RdmaDriver>()->m_rdma;
-
-    Ptr<Packet> p = Create<Packet>(0);
-
-    CustomHeader notifHdr(CustomHeader::L4_Header);
-    notifHdr.l3Prot = 0xF9;
-    notifHdr.notif.sport = m_port;
-    notifHdr.notif.dport = m_comm[m_prevRank[m_sendStep - 1]].port;
-    notifHdr.notif.step = m_sendStep;
-    notifHdr.notif.times = rdmaHw->m_agent_step[m_sendStep];
-    p->AddHeader(notifHdr);
-
-    Ipv4Header head;
-    head.SetSource(m_ip);
-    head.SetDestination(m_comm[m_prevRank[m_sendStep - 1]].ip);
-    head.SetProtocol(0xF9);
-    head.SetTtl(64);
-    head.SetPayloadSize(p->GetSize());
-    p->AddHeader(head);
-
-    PppHeader ppp;
-    ppp.SetProtocol(0x0021);
-    p->AddHeader(ppp);
-
-    auto &v = rdmaHw->m_rtTable[m_comm[m_prevRank[m_sendStep - 1]].ip.Get()]; ////
-    union {
-        struct {
-            uint32_t sip, dip;
-            uint16_t sport, dport;
-        };
-        char c[12];
-    } buf;
-    buf.sip = m_ip.Get();
-    buf.dip = m_comm[m_prevRank[m_sendStep - 1]].ip.Get();
-    buf.sport = m_port;
-    buf.dport = m_comm[m_prevRank[m_sendStep - 1]].port;
-    uint32_t nic_idx = v[Hash32(buf.c, 12) % v.size()];
-
-    Ptr<QbbNetDevice> dev = rdmaHw->m_nic[nic_idx].dev;
-
-    dev->RdmaEnqueueHighPrioQ(p);
-    dev->TriggerTransmit();
-}
-
-// CC NPA
-void RdmaCC::SetAgent() {
-    NS_LOG_FUNCTION_NOARGS();
-
-    Ptr<RdmaHw> rdmaHw = GetNode()->GetObject<RdmaDriver>()->m_rdma;
-    rdmaHw->m_detect_interval = rdmaHw->m_step_fct * 1000 / rdmaHw->m_detect_times;
-    rdmaHw->m_last_detect_time = 0;
-
-    // mRank -> mSendStep
-    if (autoRTTFactor > 0) {
-        // hard
-        uint32_t m_id = (m_ip.Get() >> 8) & 0xffff;
-        uint32_t dist_id = (m_comm[m_nextRank[m_sendStep - 1]].ip.Get() >> 8) & 0xffff;
-        uint64_t rtt = pairRtt[m_id][dist_id];
-        rdmaHw->m_agent_threshold = autoRTTFactor * rtt / 100 / 1000;
-        NS_LOG_FUNCTION("Rank " << m_rank << " to " << m_nextRank[m_sendStep - 1] << "   RTT = " << rtt << ", AGENT_THRESHOLD = " << rdmaHw->m_agent_threshold);
-    }
 }
 
 } // Namespace ns3

@@ -424,30 +424,6 @@ namespace ns3 {
 		SwitchSend(0, p, ch);
 	}
 
-	void QbbNetDevice::SendSignal(uint32_t eventID){
-		Ptr<Packet> p = Create<Packet>(0);
-
-		Ipv4Header ipv4h;
-		ipv4h.SetProtocol(0xFB);
-		ipv4h.SetSource(m_node->GetObject<Ipv4>()->GetAddress(m_ifIndex, 0).GetLocal());
-		ipv4h.SetDestination(Ipv4Address("255.255.255.255"));
-		ipv4h.SetPayloadSize(9);
-		ipv4h.SetTtl(1);
-		ipv4h.SetIdentification(UniformVariable(0, 65536).GetValue());
-		p->AddHeader(ipv4h);
-		AddHeader(p, 0x800);
-
-		CustomHeader ch(CustomHeader::L2_Header | CustomHeader::L3_Header);
-		p->PeekHeader(ch);
-		ch.headerType |= CustomHeader::L4_Header;
-		ch.signal.eventID = eventID;
-		uint16_t temp;
-		ProcessHeader(p, temp);
-		p->RemoveHeader(ipv4h);
-		p->AddHeader(ch);
-		SwitchSend(0, p, ch);
-	}
-
 	bool
 		QbbNetDevice::Attach(Ptr<QbbChannel> ch)
 	{
@@ -553,9 +529,4 @@ namespace ns3 {
 			m_nextSend = Simulator::Schedule(delta, &QbbNetDevice::DequeueAndTransmit, this);
 		}
 	}
-
-	bool QbbNetDevice::GetEgressPaused(uint32_t qIndex){
-		return m_paused[qIndex];
-	}
-
 } // namespace ns3

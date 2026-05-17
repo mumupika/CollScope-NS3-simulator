@@ -79,10 +79,6 @@ public:
 		DataRate m_curRate;
 		uint32_t m_incStage;
 	}hpccPint;
-	struct{
-		uint64_t m_lastPollingTime;
-	}npa;
-
 	/***********
 	 * methods
 	 **********/

@@ -132,12 +132,6 @@ public:
 		  uint8_t qIndex;
 	  } pfc;
 
-    //CC NPA Header
-    struct {
-      uint32_t seq;
-      uint32_t eventID;
-    } signal; //l3Port = 0xFB, for PFC path trace
-
     struct {
       uint32_t seq;
       uint32_t eventID;

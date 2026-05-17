@@ -53,8 +53,6 @@ RdmaCCHelper::Install (Ptr<Node> c)
 {
   Ptr<RdmaCC> client = m_factory.Create<RdmaCC> ();
   uint32_t app_index = c->AddApplication (client);
-  c->GetObject<RdmaDriver>()->m_rdma->m_agent_app = app_index;  // CC NPA
-  
   return client;
 }
 
