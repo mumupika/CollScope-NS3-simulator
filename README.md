@@ -1,43 +1,21 @@
-# Hybrid DP+PP
+# CollScope
 
-This repository is a network simulator that simulate Zero-3's basic Hybrid DP + PP behaviours.
+To facilitate further research, we have open-sourced the CollScope prototype for our paper: **`CollScope: Dynamic Training Semantic Alignment for Non-Intrusive Straggler Diagnosis`**, including our eBPF-based tracking suite, the core algorithms for end-to-end anomaly detection, delimitation, localization, and the simulation code for hybrid-dppp implemented with the Discrete Event Network Simulator.
 
-## Topology
+![Structure](./.assets/CollScope_structure.png)
 
-We provided 3 topologies show as follows, which adapted from [RDMA over Ethernet for Distributed Training at Meta Scale](https://dl.acm.org/doi/abs/10.1145/3651890.3672233).
+## Structure
 
-![topology](./.assets/topology.png)
-
-## Behaviours
-
-The basic pipelines we want to simulate is like [PipeDream: Fast and Efficient Pipeline Parallel DNN Training](https://arxiv.org/abs/1806.03377), which is also adapted in [DeepSpeed](https://www.deepspeed.ai/tutorials/pipeline/).
-
-![pipeline](./.assets/image.png)
-
-## Quick Start
-
-### Build
-
-```bash
-cd CollScope
-./waf configure -d configure
+```txt
+.
+|-- CollScope-NS3               # The NS3 simulator for network side hybrid collective communication.
+|-- README.md                       
+|-- dockerfile                  # Dockerfile for Network Simulation.
+|-- eBPF                        # ebpf detectors.
+|-- hook_output                 # The hook_output for network simulations.
+`-- straggler-algorithms        # The Core Straggler Algorithms.
 ```
 
-Please note if gcc version > 5, compilation will fail due to some ns3 code style. If this what you encounter, please use:
+## Citation
 
-```bash
-CC='gcc-5' CXX='g++-5' ./waf configure
-```
-
-### Experiment setup
-
-Please see `CollScope/hybrid_dppp/config.txt` for example.
-
-### Run
-
-```bash
-NS_LOG="HybridCC=info" ./waf --run 'scratch/hybrid_dppp hybrid_dppp/config.txt' 2>&1
-
-# For finer log, use:
-NS_LOG="HybridCC=all" ./waf --run 'scratch/hybrid_dppp hybrid_dppp/config.txt' 2>&1
-```
+[TBD]...

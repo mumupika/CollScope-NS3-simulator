@@ -35,3 +35,4 @@ backup/
 
 *.cache
 hook_output/**
+__pycache__
