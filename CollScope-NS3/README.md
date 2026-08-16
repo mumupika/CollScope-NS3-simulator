@@ -1,6 +1,6 @@
 # CollScope NS3
 
-This part is adapted from [TBD], Special Thanks to their open source!
+This part is adapted from [Vedrfolnir](https://github.com/Networked-System-and-Security-Group/Vedrfolnir), Special Thanks to their open source!
 
 ## Topology
 
